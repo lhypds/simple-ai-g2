@@ -237,8 +237,12 @@ body {
 }
 
 select.field__input {
-  height: 28px;
-  padding-block: 12px;
+  /* Let the select size to its text. A fixed small height plus padding leaves
+     no room for the label in Safari (border-box), which clips the text. */
+  height: auto;
+  min-height: 44px;
+  padding-block: 10px;
+  line-height: 1.2;
 }
 
 .modal__actions {
