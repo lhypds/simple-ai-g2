@@ -1,5 +1,6 @@
 import { waitForEvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { createDisplay } from "./glasses";
+import { createWebUI } from "./ui";
 import { SpeechSegmenter } from "./segmenter";
 import { hasApiKey, transcribe } from "./transcribe";
 
@@ -8,13 +9,13 @@ const SAMPLE_RATE = 16000;
 
 async function main() {
   const bridge = await waitForEvenAppBridge();
+  const ui = await createWebUI(bridge);
   const display = await createDisplay(bridge);
 
   if (!hasApiKey()) {
-    await display.render({
-      status: "⚠ No API key",
-      text: "Set VITE_OPENAI_API_KEY in .env and rebuild.",
-    });
+    const msg = "Set VITE_OPENAI_API_KEY in .env and rebuild.";
+    ui.setStatus("⚠ No API key");
+    await display.render({ status: "⚠ No API key", text: msg });
     return;
   }
 
@@ -34,16 +35,19 @@ async function main() {
   });
 
   async function handleSegment(pcm: Uint8Array, seq: number) {
+    ui.setStatus("● transcribing…");
     await display.render({ status: "● transcribing…", text: transcript });
     try {
       const text = await transcribe(pcm, SAMPLE_RATE);
       if (text && seq > lastShownSeq) {
         lastShownSeq = seq;
         transcript = transcript ? `${transcript} ${text}` : text;
+        ui.addTranscript(text); // show the finished result on the page
       }
     } catch (err) {
       console.error("transcribe error:", err);
     }
+    ui.setStatus("● listening");
     await display.render({ status: "● listening", text: transcript });
   }
 
@@ -54,10 +58,9 @@ async function main() {
   });
 
   const micOpen = await bridge.audioControl(true);
-  await display.render({
-    status: micOpen ? "● listening" : "⚠ mic failed",
-    text: transcript,
-  });
+  const status = micOpen ? "● listening" : "⚠ mic failed";
+  ui.setStatus(status);
+  await display.render({ status, text: transcript });
 }
 
 main().catch(console.error);
