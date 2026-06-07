@@ -47,6 +47,10 @@ html,
 body {
   /* Allow scrolling/panning but disable pinch-zoom on touch devices. */
   touch-action: pan-x pan-y;
+  /* Lock the page so only the .term pane scrolls — no whole-page scroll. */
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -127,6 +131,8 @@ body {
   margin: 0;
   padding: 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   white-space: pre-wrap;
   word-break: break-word;
   font:
