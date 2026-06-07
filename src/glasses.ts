@@ -1,7 +1,7 @@
-// Glasses display: one full-screen text container that shows a status line, the
-// single most recent spoken sentence, and the AI's answer to it.
-// createStartUpPageContainer may only be called once, so this sets it up and then
-// pushes every later update through textContainerUpgrade.
+// Glasses display: one full-screen text container that mirrors the web terminal —
+// it prints the most recent tail of the same sc output stream, with a status line
+// pinned to the bottom. createStartUpPageContainer may only be called once, so this
+// sets it up and then pushes every later update through textContainerUpgrade.
 
 import {
   CreateStartUpPageContainer,
@@ -15,12 +15,12 @@ const CONTAINER_NAME = "caption"; // max 16 chars
 const SCREEN_WIDTH = 576;
 const SCREEN_HEIGHT = 288;
 
-// How much of the answer to keep on screen. The display is small (576x288), so we
-// trim to the most recent characters at a word boundary.
-const MAX_ANSWER_CHARS = 300;
+// How much terminal tail to keep on screen. The display is small (576x288), so we
+// trim to the most recent characters at a line/word boundary.
+const MAX_TERMINAL_CHARS = 300;
 
 export interface Display {
-  render(state: { status: string; sentence: string; answer: string }): Promise<void>;
+  render(state: { status: string; text: string }): Promise<void>;
 }
 
 export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
@@ -44,12 +44,12 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
   if (result !== 0) throw new Error(`createStartUpPageContainer failed: ${result}`);
 
   return {
-    async render({ status, sentence, answer }) {
-      // One sentence (what was just said) plus the AI answer beneath it.
+    async render({ status, text }) {
+      // The terminal tail, with the status pinned to the bottom line.
       const lines: string[] = [];
+      const tail = trimTail(text, MAX_TERMINAL_CHARS);
+      if (tail) lines.push(tail);
       if (status) lines.push(status);
-      if (sentence) lines.push(sentence);
-      if (answer) lines.push(trimTail(answer, MAX_ANSWER_CHARS));
       const content = lines.join("\n");
       await bridge.textContainerUpgrade(
         new TextContainerUpgrade({

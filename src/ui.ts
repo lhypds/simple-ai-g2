@@ -1,16 +1,16 @@
 // Web-side UI rendered into #app:
-//   - a header with a settings (gear) icon
-//   - a settings modal to set/save username + password (also logs `sc` in)
-//   - a transcript panel that shows each finished transcription result
-//   - a chat panel that shows `sc` (simple-ai-chat CLI) output, fed by a text
-//     input box and by finished voice transcripts
+//   - a header with a Login button and a settings (gear) icon
+//   - a Login modal to set/save username + password (also logs `sc` in)
+//   - a Settings modal that holds only the speech-to-text language selection
+//   - a terminal panel that prints the `sc` (simple-ai-chat CLI) output stream,
+//     fed by a prompt-style input line and by finished voice transcripts
 //
-// Glasses rendering is unchanged; this is the page the user sees in the app/browser.
+// This is a plain terminal view: output is printed as-is, not split into chat
+// bubbles. The glasses mirror the exact same text.
 
 import "./ui.css";
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { loadSettings, saveSettings } from "./settings";
-import { connectSc, type ScClient } from "./sc";
 
 const GEAR_SVG = `
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -19,25 +19,39 @@ const GEAR_SVG = `
   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
 </svg>`;
 
+// Speech-to-text language choices. "" means auto-detect.
+const LANGUAGES: Array<{ value: string; label: string }> = [
+  { value: "", label: "Auto-detect" },
+  { value: "en", label: "English" },
+  { value: "ja", label: "日本語" },
+  { value: "zh", label: "中文" },
+];
+
 export interface WebUI {
   setStatus(text: string): void;
-  addTranscript(text: string): void;
-  /** Send text to `sc` and show it in the chat panel (used by voice + the input box). */
-  askSc(text: string): void;
+  /** Replace the terminal output with the given text (kept in sync with the glasses). */
+  render(text: string): void;
 }
 
-/** Optional hooks so callers (e.g. the glasses display) can mirror the AI result. */
 export interface WebUIOptions {
-  onAiChunk?: (text: string) => void; // a piece of the AI reply arrived
-  onAiReady?: () => void; // the AI reply finished
+  /** User submitted a line in the input box. */
+  onSubmit: (text: string) => void;
+  /** User saved Login credentials. */
+  onLogin: (username: string, password: string) => void;
+  /** Speech language changed (also fired once with the saved value at startup). */
+  onLanguageChange: (language: string) => void;
 }
 
 export async function createWebUI(
   bridge: EvenAppBridge,
-  options: WebUIOptions = {},
+  options: WebUIOptions,
 ): Promise<WebUI> {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) throw new Error("#app element not found");
+
+  const langOptions = LANGUAGES.map(
+    (l) => `<option value="${l.value}">${l.label}</option>`,
+  ).join("");
 
   root.innerHTML = `
     <div class="app">
@@ -46,26 +60,23 @@ export async function createWebUI(
           simple ai
           <span class="app__status" data-status></span>
         </div>
-        <button class="icon-btn" data-open-settings aria-label="Settings">${GEAR_SVG}</button>
-      </header>
-      <main class="transcript" data-transcript>
-        <p class="transcript__empty">Speak — finished transcripts will appear here.</p>
-      </main>
-      <section class="chat">
-        <div class="chat__log" data-chat>
-          <p class="chat__empty">Ask the AI — type below, or just speak.</p>
+        <div class="app__actions">
+          <button class="btn" data-open-login>Login</button>
+          <button class="icon-btn" data-open-settings aria-label="Settings">${GEAR_SVG}</button>
         </div>
-        <form class="chat__input" data-chat-form>
-          <input class="chat__field" data-chat-field type="text"
-                 placeholder="Ask sc…" autocomplete="off" />
-          <button class="btn btn--primary" type="submit">Send</button>
-        </form>
-      </section>
+      </header>
+      <pre class="term" data-term></pre>
+      <form class="term-input" data-input-form>
+        <span class="term-input__prompt">&gt;</span>
+        <input class="term-input__field" data-input-field type="text"
+               placeholder="Type a message…" autocomplete="off" />
+        <button class="btn btn--primary" type="submit">Send</button>
+      </form>
     </div>
 
-    <div class="modal" data-modal>
+    <div class="modal" data-login-modal>
       <div class="modal__box">
-        <h2 class="modal__title">Settings</h2>
+        <h2 class="modal__title">Login</h2>
         <label class="field">
           <span class="field__label">Username</span>
           <input class="field__input" data-username type="text" autocomplete="username" />
@@ -73,6 +84,20 @@ export async function createWebUI(
         <label class="field">
           <span class="field__label">Password</span>
           <input class="field__input" data-password type="password" autocomplete="current-password" />
+        </label>
+        <div class="modal__actions">
+          <button class="btn" data-close-login>Cancel</button>
+          <button class="btn btn--primary" data-do-login>Login</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-settings-modal>
+      <div class="modal__box">
+        <h2 class="modal__title">Settings</h2>
+        <label class="field">
+          <span class="field__label">Speech language</span>
+          <select class="field__input" data-language>${langOptions}</select>
         </label>
         <div class="modal__actions">
           <span class="modal__saved" data-saved>Saved ✓</span>
@@ -84,104 +109,83 @@ export async function createWebUI(
   `;
 
   const statusEl = root.querySelector<HTMLSpanElement>("[data-status]")!;
-  const listEl = root.querySelector<HTMLElement>("[data-transcript]")!;
-  const chatEl = root.querySelector<HTMLElement>("[data-chat]")!;
-  const chatForm = root.querySelector<HTMLFormElement>("[data-chat-form]")!;
-  const chatField = root.querySelector<HTMLInputElement>("[data-chat-field]")!;
-  const modal = document.querySelector<HTMLDivElement>("[data-modal]")!;
-  const usernameInput = modal.querySelector<HTMLInputElement>("[data-username]")!;
-  const passwordInput = modal.querySelector<HTMLInputElement>("[data-password]")!;
-  const savedNote = modal.querySelector<HTMLSpanElement>("[data-saved]")!;
+  const termEl = root.querySelector<HTMLPreElement>("[data-term]")!;
+  const inputForm = root.querySelector<HTMLFormElement>("[data-input-form]")!;
+  const inputField = root.querySelector<HTMLInputElement>("[data-input-field]")!;
 
-  // --- chat panel helpers -------------------------------------------------
-  const addBubble = (role: "user" | "ai", text: string): HTMLElement => {
-    const empty = chatEl.querySelector(".chat__empty");
-    if (empty) empty.remove();
-    const bubble = document.createElement("div");
-    bubble.className = `bubble bubble--${role}`;
-    bubble.textContent = text;
-    chatEl.append(bubble);
-    chatEl.scrollTop = chatEl.scrollHeight;
-    return bubble;
-  };
+  const loginModal = document.querySelector<HTMLDivElement>("[data-login-modal]")!;
+  const usernameInput = loginModal.querySelector<HTMLInputElement>("[data-username]")!;
+  const passwordInput = loginModal.querySelector<HTMLInputElement>("[data-password]")!;
 
-  // The CLI streams its reply in pieces; we append into one "live" AI bubble
-  // until it goes idle (the `ready` event), then start a fresh one next time.
-  let liveAi: HTMLElement | null = null;
-  const sc: ScClient = connectSc({
-    onChunk(text) {
-      if (!liveAi) liveAi = addBubble("ai", "");
-      liveAi.textContent += text;
-      chatEl.scrollTop = chatEl.scrollHeight;
-      options.onAiChunk?.(text);
-    },
-    onReady() {
-      liveAi = null;
-      options.onAiReady?.();
-    },
-    onUnavailable() {
-      addBubble("ai", "⚠ sc bridge unavailable — run `npm run dev`.");
-    },
-  });
+  const settingsModal = document.querySelector<HTMLDivElement>("[data-settings-modal]")!;
+  const languageSelect = settingsModal.querySelector<HTMLSelectElement>("[data-language]")!;
+  const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
 
-  chatForm.addEventListener("submit", (e) => {
+  // Hold the persisted settings so saving one modal doesn't clobber the other's fields.
+  let settings = await loadSettings(bridge);
+  options.onLanguageChange(settings.language);
+
+  // --- input line ---------------------------------------------------------
+  inputForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const text = chatField.value.trim();
-    if (text) askSc(text);
-    chatField.value = "";
+    const text = inputField.value.trim();
+    if (text) options.onSubmit(text);
+    inputField.value = "";
   });
 
-  function askSc(text: string) {
-    addBubble("user", text);
-    void sc.send(text);
-  }
-
-  // --- settings modal -----------------------------------------------------
-  const openModal = async () => {
-    const settings = await loadSettings(bridge);
+  // --- login modal --------------------------------------------------------
+  const openLogin = () => {
     usernameInput.value = settings.username;
     passwordInput.value = settings.password;
-    savedNote.classList.remove("modal__saved--show");
-    modal.classList.add("modal--open");
+    loginModal.classList.add("modal--open");
   };
-  const closeModal = () => modal.classList.remove("modal--open");
+  const closeLogin = () => loginModal.classList.remove("modal--open");
 
-  root.querySelector("[data-open-settings]")!.addEventListener("click", () => void openModal());
-  modal.querySelector("[data-close-settings]")!.addEventListener("click", closeModal);
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
+  root.querySelector("[data-open-login]")!.addEventListener("click", openLogin);
+  loginModal.querySelector("[data-close-login]")!.addEventListener("click", closeLogin);
+  loginModal.addEventListener("click", (e) => {
+    if (e.target === loginModal) closeLogin();
   });
 
-  modal.querySelector("[data-save]")!.addEventListener("click", async () => {
+  loginModal.querySelector("[data-do-login]")!.addEventListener("click", async () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
-    await saveSettings(bridge, { username, password });
-    // Log `sc` in with the saved credentials so chat requests are authenticated.
-    if (username) void sc.login(username, password);
+    settings = { ...settings, username, password };
+    await saveSettings(bridge, settings);
+    if (username) options.onLogin(username, password);
+    closeLogin();
+  });
+
+  // --- settings modal (language only) -------------------------------------
+  const openSettings = () => {
+    languageSelect.value = settings.language;
+    savedNote.classList.remove("modal__saved--show");
+    settingsModal.classList.add("modal--open");
+  };
+  const closeSettings = () => settingsModal.classList.remove("modal--open");
+
+  root.querySelector("[data-open-settings]")!.addEventListener("click", openSettings);
+  settingsModal.querySelector("[data-close-settings]")!.addEventListener("click", closeSettings);
+  settingsModal.addEventListener("click", (e) => {
+    if (e.target === settingsModal) closeSettings();
+  });
+
+  settingsModal.querySelector("[data-save]")!.addEventListener("click", async () => {
+    const language = languageSelect.value;
+    settings = { ...settings, language };
+    await saveSettings(bridge, settings);
+    options.onLanguageChange(language);
     savedNote.classList.add("modal__saved--show");
-    setTimeout(closeModal, 600);
+    setTimeout(closeSettings, 600);
   });
 
   return {
     setStatus(text: string) {
       statusEl.textContent = text;
     },
-    addTranscript(text: string) {
-      const empty = listEl.querySelector(".transcript__empty");
-      if (empty) empty.remove();
-
-      const line = document.createElement("div");
-      line.className = "line";
-      const time = document.createElement("span");
-      time.className = "line__time";
-      time.textContent = new Date().toLocaleTimeString();
-      const body = document.createElement("span");
-      body.className = "line__text";
-      body.textContent = text;
-      line.append(time, body);
-      listEl.append(line);
-      listEl.scrollTop = listEl.scrollHeight;
+    render(text: string) {
+      termEl.textContent = text;
+      termEl.scrollTop = termEl.scrollHeight;
     },
-    askSc,
   };
 }

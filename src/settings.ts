@@ -1,4 +1,4 @@
-// Persisted web-side settings (username / password).
+// Persisted web-side settings (username / password / speech language).
 //
 // Stored through the Even bridge's local storage so they survive across sessions on
 // the app side. Falls back to window.localStorage when the bridge call is unavailable
@@ -11,9 +11,11 @@ const KEY = "webSettings";
 export interface Settings {
   username: string;
   password: string;
+  /** ISO-639-1 speech-to-text hint; "" means auto-detect. */
+  language: string;
 }
 
-const EMPTY: Settings = { username: "", password: "" };
+const EMPTY: Settings = { username: "", password: "", language: "" };
 
 export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
   let raw = "";
@@ -25,7 +27,11 @@ export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
   if (!raw) return { ...EMPTY };
   try {
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { username: parsed.username ?? "", password: parsed.password ?? "" };
+    return {
+      username: parsed.username ?? "",
+      password: parsed.password ?? "",
+      language: parsed.language ?? "",
+    };
   } catch {
     return { ...EMPTY };
   }

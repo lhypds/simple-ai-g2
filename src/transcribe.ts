@@ -10,21 +10,29 @@ const ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
 
 const API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
 const MODEL = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) ?? "whisper-1";
-// Optional ISO-639-1 hint (e.g. "en", "ja", "zh"). Leave unset for auto-detect.
-const LANGUAGE = import.meta.env.VITE_STT_LANGUAGE as string | undefined;
+// Default ISO-639-1 hint (e.g. "en", "ja", "zh"). Used when the caller doesn't pass
+// one. Leave unset for auto-detect.
+const DEFAULT_LANGUAGE = import.meta.env.VITE_STT_LANGUAGE as string | undefined;
 
 export function hasApiKey(): boolean {
   return Boolean(API_KEY);
 }
 
-export async function transcribe(pcm: Uint8Array, sampleRate: number): Promise<string> {
+// `language` is an optional ISO-639-1 hint chosen in Settings; empty/undefined
+// means auto-detect.
+export async function transcribe(
+  pcm: Uint8Array,
+  sampleRate: number,
+  language?: string,
+): Promise<string> {
   if (!API_KEY) throw new Error("VITE_OPENAI_API_KEY is not set");
 
+  const lang = language || DEFAULT_LANGUAGE;
   const form = new FormData();
   form.append("file", pcm16ToWav(pcm, sampleRate), "speech.wav");
   form.append("model", MODEL);
   form.append("response_format", "json");
-  if (LANGUAGE) form.append("language", LANGUAGE);
+  if (lang) form.append("language", lang);
 
   const res = await fetch(ENDPOINT, {
     method: "POST",

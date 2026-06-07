@@ -1,35 +1,62 @@
 import { waitForEvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { createDisplay } from "./glasses";
 import { createWebUI } from "./ui";
+import { connectSc } from "./sc";
 import { SpeechSegmenter } from "./segmenter";
 import { hasApiKey, transcribe } from "./transcribe";
 
 // The glasses mic streams single-channel 16 kHz / 16-bit PCM.
 const SAMPLE_RATE = 16000;
 
+// Keep the terminal buffer bounded; the glasses only show the tail anyway.
+const TERMINAL_MAX = 4000;
+
 async function main() {
   const bridge = await waitForEvenAppBridge();
   const display = await createDisplay(bridge);
 
-  // The latest spoken sentence and the AI's answer to it. The glasses show only
-  // these (one sentence + its result), unlike the scrolling web panels.
-  let sentence = "";
-  let answer = "";
+  // One terminal buffer drives both the web view and the glasses, so they show
+  // exactly the same text.
+  let terminal = "";
+  let statusText = "starting…";
+  let sttLanguage = ""; // ISO-639-1 hint from Settings; "" = auto-detect.
+
+  function emit(text: string) {
+    terminal = (terminal + text).slice(-TERMINAL_MAX);
+    ui.render(terminal);
+    void display.render({ status: statusText, text: terminal });
+  }
+
+  function setStatus(text: string) {
+    statusText = text;
+    ui.setStatus(text);
+    void display.render({ status: statusText, text: terminal });
+  }
+
+  // The `sc` CLI bridge: stream its output into the terminal as it arrives.
+  const sc = connectSc({
+    onChunk: (text) => emit(text),
+    onReady: () => {},
+    onUnavailable: () => emit("\n[sc bridge unavailable — run `npm run dev`]\n"),
+  });
+
+  // Echo a query as a prompt line, then send it to `sc`.
+  function ask(text: string) {
+    emit(`\n> ${text}\n`);
+    void sc.send(text);
+  }
 
   const ui = await createWebUI(bridge, {
-    onAiChunk: (text) => {
-      answer += text;
-      void display.render({ status: "● answering…", sentence, answer });
-    },
-    onAiReady: () => {
-      void display.render({ status: "● listening", sentence, answer });
+    onSubmit: (text) => ask(text),
+    onLogin: (username, password) => void sc.login(username, password),
+    onLanguageChange: (language) => {
+      sttLanguage = language;
     },
   });
 
   if (!hasApiKey()) {
-    const msg = "Set VITE_OPENAI_API_KEY in .env and rebuild.";
-    ui.setStatus("⚠ No API key");
-    await display.render({ status: "⚠ No API key", sentence: msg, answer: "" });
+    setStatus("⚠ No API key");
+    emit("Set VITE_OPENAI_API_KEY in .env and rebuild.\n");
     return;
   }
 
@@ -47,26 +74,17 @@ async function main() {
   });
 
   async function handleSegment(pcm: Uint8Array, seq: number) {
-    ui.setStatus("● transcribing…");
-    await display.render({ status: "● transcribing…", sentence, answer });
+    setStatus("● transcribing…");
     try {
-      const text = await transcribe(pcm, SAMPLE_RATE);
+      const text = await transcribe(pcm, SAMPLE_RATE, sttLanguage || undefined);
       if (text && seq > lastShownSeq) {
         lastShownSeq = seq;
-        // A new sentence replaces the old one and clears the previous answer; the
-        // glasses only ever show the most recent sentence and its result.
-        sentence = text;
-        answer = "";
-        ui.addTranscript(text); // show the finished result on the page
-        ui.askSc(text); // and send it to the sc AI chat
-        await display.render({ status: "● answering…", sentence, answer });
-        return;
+        ask(text); // echo the transcript and forward it to sc
       }
     } catch (err) {
       console.error("transcribe error:", err);
     }
-    ui.setStatus("● listening");
-    await display.render({ status: "● listening", sentence, answer });
+    setStatus("● listening");
   }
 
   // Audio arrives as audioEvent PCM bytes on the EvenHub event stream.
@@ -76,9 +94,7 @@ async function main() {
   });
 
   const micOpen = await bridge.audioControl(true);
-  const status = micOpen ? "● listening" : "⚠ mic failed";
-  ui.setStatus(status);
-  await display.render({ status, sentence, answer });
+  setStatus(micOpen ? "● listening" : "⚠ mic failed");
 }
 
 main().catch(console.error);
