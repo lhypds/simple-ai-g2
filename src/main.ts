@@ -20,6 +20,9 @@ async function main() {
   let terminal = "";
   let statusText = "starting…";
   let sttLanguage = ""; // ISO-639-1 hint from Settings; "" = auto-detect.
+  // The CLI prompt (e.g. "gpt-5.5> ") captured from the last reply, so we can keep
+  // it on screen when we clear for a new conversation.
+  let lastPrompt = "";
 
   // While `sc` is producing a reply we stop listening and follow the newest output
   // on the glasses; `listening` gates audio so nothing is captured meanwhile.
@@ -55,6 +58,9 @@ async function main() {
   const sc = connectSc({
     onChunk: (text) => emit(text),
     onReady: () => {
+      // Remember the trailing CLI prompt so a cleared screen still shows it.
+      const prompt = trailingPrompt(terminal);
+      if (prompt) lastPrompt = prompt;
       // A reply finished: resume listening for the next utterance.
       if (generating) {
         generating = false;
@@ -64,11 +70,12 @@ async function main() {
     onUnavailable: () => emit("\n[sc bridge unavailable — run `npm run dev`]\n"),
   });
 
-  // Echo the input so it appears right after the `gpt-5.5>` prompt the CLI already
-  // printed (a piped stdin isn't echoed back), then send it to `sc`. We stop
-  // listening and switch to "generating" until the reply completes.
+  // Start a new conversation: clear the screen so only this exchange is shown, keep
+  // the CLI prompt, and echo the input after it. Then send to `sc` and switch to
+  // "generating" (stops listening) until the reply completes.
   function ask(text: string) {
-    emit(`${text}\n`);
+    terminal = `${lastPrompt}${text}\n`;
+    ui.render(terminal);
     generating = true;
     setStatus("● generating…");
     void stopListening();
@@ -127,6 +134,12 @@ async function main() {
   });
 
   await startListening();
+}
+
+// Extract the trailing CLI prompt (e.g. "gpt-5.5> ") from the output, if any.
+function trailingPrompt(text: string): string {
+  const m = text.match(/(?:^|\n)([^\n]*?>[ \t]*)$/);
+  return m ? m[1] : "";
 }
 
 main().catch(console.error);
