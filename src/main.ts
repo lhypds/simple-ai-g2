@@ -33,27 +33,22 @@ async function main() {
   let generating = false;
   let listening = false;
 
-  // The glasses follow the newest output by default; the display keeps its own scroll
-  // position so the user can page back with the Up/Down buttons (see below).
-  // Tidy the text for the small glasses display: drop the CLI's ":help for help"
-  // hint, and the trailing idle prompt (e.g. "gpt-5.5> ") so a finished reply
-  // doesn't leave an empty next-model line.
-  const glassesText = () =>
-    terminal
-      .replace(/^.*:help.*\n?/gim, "")
-      .replace(/\n*[^\n]*?>[ \t]*$/, "");
-
+  // Append CLI output to both buffers. They're independent: `terminal` is kept tidy
+  // for the small glasses display (rendered as-is, no extra cleanup), while `webLog`
+  // keeps the full raw scrollback for the web view.
   function emit(text: string) {
-    terminal = (terminal + text).slice(-TERMINAL_MAX);
+    // The ":help for help" banner hint is noise on the glasses; drop it on the way
+    // in (it's a whole line and never part of a reply).
+    terminal = (terminal + text).replace(/^.*:help.*\n?/gim, "").slice(-TERMINAL_MAX);
     webLog = (webLog + text).slice(-WEB_LOG_MAX);
     ui.render(webLog);
-    void display.render({ status: statusText, text: glassesText() });
+    void display.render({ status: statusText, text: terminal });
   }
 
   function setStatus(text: string) {
     statusText = text;
     ui.setStatus(text);
-    void display.render({ status: statusText, text: glassesText() });
+    void display.render({ status: statusText, text: terminal });
   }
 
   async function startListening() {
@@ -71,9 +66,16 @@ async function main() {
   const sc = connectSc({
     onChunk: (text) => emit(text),
     onReady: () => {
-      // Remember the trailing CLI prompt so a cleared screen still shows it.
+      // The CLI is idle, having just printed its prompt. Remember it (so a cleared
+      // screen still shows it), then drop it from the glasses buffer — this is the
+      // one moment we know the trailing `>` is the prompt and not part of a reply
+      // (e.g. code like `x -> `), so it's safe to strip without a render-time guard.
       const prompt = trailingPrompt(terminal);
-      if (prompt) lastPrompt = prompt;
+      if (prompt) {
+        lastPrompt = prompt;
+        terminal = terminal.replace(/\n*[^\n]*?>[ \t]*$/, "");
+        void display.render({ status: statusText, text: terminal });
+      }
       // A reply finished: resume listening for the next utterance.
       if (generating) {
         generating = false;
