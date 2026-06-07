@@ -15,14 +15,21 @@ const CONTAINER_NAME = "caption"; // max 16 chars
 const SCREEN_WIDTH = 576;
 const SCREEN_HEIGHT = 288;
 
-// The container captures scroll events (isEventCapture), so we hand it a large
-// window of recent output to scroll through rather than just the few lines that fit
-// on screen. Capped to stay within the source buffer (see TERMINAL_MAX in main.ts).
+// The container captures scroll events (isEventCapture), so when idle we hand it a
+// large window of recent output to scroll through. Capped to stay within the source
+// buffer (see TERMINAL_MAX in main.ts).
 const MAX_TERMINAL_LINES = 200;
 const MAX_TERMINAL_CHARS = 3800;
 
+// While text is streaming we instead show just the lines that fit on screen, so the
+// newest output stays pinned to the bottom (the device renders content top-down).
+const FOLLOW_LINES = 7;
+const FOLLOW_CHARS = 240;
+
 export interface Display {
-  render(state: { status: string; text: string }): Promise<void>;
+  // `follow` keeps the newest text on screen (used while generating); otherwise the
+  // full scrollable window is shown.
+  render(state: { status: string; text: string; follow?: boolean }): Promise<void>;
 }
 
 export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
@@ -46,10 +53,12 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
   if (result !== 0) throw new Error(`createStartUpPageContainer failed: ${result}`);
 
   return {
-    async render({ status, text }) {
+    async render({ status, text, follow }) {
       // The newest lines (auto-scrolled to the bottom), with the status pinned below.
       const lines: string[] = [];
-      const tail = tailWindow(text, MAX_TERMINAL_LINES, MAX_TERMINAL_CHARS);
+      const maxLines = follow ? FOLLOW_LINES : MAX_TERMINAL_LINES;
+      const maxChars = follow ? FOLLOW_CHARS : MAX_TERMINAL_CHARS;
+      const tail = tailWindow(text, maxLines, maxChars);
       if (tail) lines.push(tail);
       if (status) lines.push(status);
       const content = lines.join("\n");

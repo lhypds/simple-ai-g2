@@ -21,29 +21,58 @@ async function main() {
   let statusText = "starting…";
   let sttLanguage = ""; // ISO-639-1 hint from Settings; "" = auto-detect.
 
+  // While `sc` is producing a reply we stop listening and follow the newest output
+  // on the glasses; `listening` gates audio so nothing is captured meanwhile.
+  let generating = false;
+  let listening = false;
+
+  // The glasses always follow the bottom so the newest output stays on screen, both
+  // while generating and after a reply finishes (the device renders content top-down,
+  // so a full window would otherwise scroll the newest text off the bottom).
   function emit(text: string) {
     terminal = (terminal + text).slice(-TERMINAL_MAX);
     ui.render(terminal);
-    void display.render({ status: statusText, text: terminal });
+    void display.render({ status: statusText, text: terminal, follow: true });
   }
 
   function setStatus(text: string) {
     statusText = text;
     ui.setStatus(text);
-    void display.render({ status: statusText, text: terminal });
+    void display.render({ status: statusText, text: terminal, follow: true });
+  }
+
+  async function startListening() {
+    const ok = await bridge.audioControl(true);
+    listening = ok;
+    setStatus(ok ? "● listening" : "⚠ mic failed");
+  }
+
+  async function stopListening() {
+    listening = false;
+    await bridge.audioControl(false);
   }
 
   // The `sc` CLI bridge: stream its output into the terminal as it arrives.
   const sc = connectSc({
     onChunk: (text) => emit(text),
-    onReady: () => {},
+    onReady: () => {
+      // A reply finished: resume listening for the next utterance.
+      if (generating) {
+        generating = false;
+        void startListening();
+      }
+    },
     onUnavailable: () => emit("\n[sc bridge unavailable — run `npm run dev`]\n"),
   });
 
   // Echo the input so it appears right after the `gpt-5.5>` prompt the CLI already
-  // printed (a piped stdin isn't echoed back), then send it to `sc`.
+  // printed (a piped stdin isn't echoed back), then send it to `sc`. We stop
+  // listening and switch to "generating" until the reply completes.
   function ask(text: string) {
     emit(`${text}\n`);
+    generating = true;
+    setStatus("● generating…");
+    void stopListening();
     void sc.send(text);
   }
 
@@ -80,22 +109,25 @@ async function main() {
       const text = await transcribe(pcm, SAMPLE_RATE, sttLanguage || undefined);
       if (text && seq > lastShownSeq) {
         lastShownSeq = seq;
-        ask(text); // echo the transcript and forward it to sc
+        ask(text); // echo the transcript and forward it to sc (flips to "generating")
+        return;
       }
     } catch (err) {
       console.error("transcribe error:", err);
     }
+    // Nothing usable — keep listening.
     setStatus("● listening");
   }
 
-  // Audio arrives as audioEvent PCM bytes on the EvenHub event stream.
+  // Audio arrives as audioEvent PCM bytes on the EvenHub event stream. Ignore it
+  // while generating so the reply isn't interrupted by stray speech.
   bridge.onEvenHubEvent((event) => {
+    if (!listening) return;
     const pcm = event.audioEvent?.audioPcm;
     if (pcm && pcm.byteLength > 0) segmenter.push(pcm);
   });
 
-  const micOpen = await bridge.audioControl(true);
-  setStatus(micOpen ? "● listening" : "⚠ mic failed");
+  await startListening();
 }
 
 main().catch(console.error);
