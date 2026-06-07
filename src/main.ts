@@ -26,19 +26,18 @@ async function main() {
   let generating = false;
   let listening = false;
 
-  // The glasses always follow the bottom so the newest output stays on screen, both
-  // while generating and after a reply finishes (the device renders content top-down,
-  // so a full window would otherwise scroll the newest text off the bottom).
+  // The glasses follow the newest output by default; the display keeps its own scroll
+  // position so the user can page back with the Up/Down buttons (see below).
   function emit(text: string) {
     terminal = (terminal + text).slice(-TERMINAL_MAX);
     ui.render(terminal);
-    void display.render({ status: statusText, text: terminal, follow: true });
+    void display.render({ status: statusText, text: terminal });
   }
 
   function setStatus(text: string) {
     statusText = text;
     ui.setStatus(text);
-    void display.render({ status: statusText, text: terminal, follow: true });
+    void display.render({ status: statusText, text: terminal });
   }
 
   async function startListening() {
@@ -119,8 +118,8 @@ async function main() {
     setStatus("● listening");
   }
 
-  // Audio arrives as audioEvent PCM bytes on the EvenHub event stream. Ignore it
-  // while generating so the reply isn't interrupted by stray speech.
+  // Audio arrives as audioEvent PCM bytes. Ignore it while generating so the reply
+  // isn't interrupted by stray speech. (Scrolling is handled natively by the device.)
   bridge.onEvenHubEvent((event) => {
     if (!listening) return;
     const pcm = event.audioEvent?.audioPcm;
