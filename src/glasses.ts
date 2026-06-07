@@ -15,11 +15,11 @@ const CONTAINER_NAME = "caption"; // max 16 chars
 const SCREEN_WIDTH = 576;
 const SCREEN_HEIGHT = 288;
 
-// The display is small (576x288) and renders content from the top, so to keep the
-// newest output visible (auto-scroll to bottom) we show only the most recent lines,
-// capped by a character budget as a safety net for long wrapping lines.
-const MAX_TERMINAL_LINES = 6;
-const MAX_TERMINAL_CHARS = 240;
+// The container captures scroll events (isEventCapture), so we hand it a large
+// window of recent output to scroll through rather than just the few lines that fit
+// on screen. Capped to stay within the source buffer (see TERMINAL_MAX in main.ts).
+const MAX_TERMINAL_LINES = 200;
+const MAX_TERMINAL_CHARS = 3800;
 
 export interface Display {
   render(state: { status: string; text: string }): Promise<void>;
