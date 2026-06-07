@@ -82,6 +82,7 @@ async function main() {
 
   async function stopListening() {
     listening = false;
+    setStatus(""); // clear the listening indicator while the mic is off
     await bridge.audioControl(false);
   }
 
@@ -124,8 +125,8 @@ async function main() {
     const stripped = webLog.replace(/(^|\n)[^\n]*?>[ \t]*$/, "$1");
     webLog = (stripped + `${lastPrompt}${text}\n`).slice(-WEB_LOG_MAX);
     generating = true;
+    void stopListening(); // clears the status; set "generating" after so it wins
     setStatus("● generating"); // re-renders both views
-    void stopListening();
     void sc.send(text);
   }
 
@@ -133,6 +134,9 @@ async function main() {
     onSubmit: (text) => ask(text),
     onInput: (text) => {
       draft = text;
+      // Typing takes over from the mic: stop listening on the first keystroke so a
+      // typed message isn't competing with captured speech.
+      if (text && listening) void stopListening();
       renderAll();
     },
     onLogin: (username, password) => void sc.login(username, password),
