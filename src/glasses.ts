@@ -15,9 +15,11 @@ const CONTAINER_NAME = "caption"; // max 16 chars
 const SCREEN_WIDTH = 576;
 const SCREEN_HEIGHT = 288;
 
-// How much terminal tail to keep on screen. The display is small (576x288), so we
-// trim to the most recent characters at a line/word boundary.
-const MAX_TERMINAL_CHARS = 300;
+// The display is small (576x288) and renders content from the top, so to keep the
+// newest output visible (auto-scroll to bottom) we show only the most recent lines,
+// capped by a character budget as a safety net for long wrapping lines.
+const MAX_TERMINAL_LINES = 6;
+const MAX_TERMINAL_CHARS = 240;
 
 export interface Display {
   render(state: { status: string; text: string }): Promise<void>;
@@ -45,9 +47,9 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
 
   return {
     async render({ status, text }) {
-      // The terminal tail, with the status pinned to the bottom line.
+      // The newest lines (auto-scrolled to the bottom), with the status pinned below.
       const lines: string[] = [];
-      const tail = trimTail(text, MAX_TERMINAL_CHARS);
+      const tail = tailWindow(text, MAX_TERMINAL_LINES, MAX_TERMINAL_CHARS);
       if (tail) lines.push(tail);
       if (status) lines.push(status);
       const content = lines.join("\n");
@@ -64,9 +66,14 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
   };
 }
 
-function trimTail(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(text.length - max);
-  const space = cut.indexOf(" ");
-  return space > 0 ? cut.slice(space + 1) : cut;
+// Keep the most recent `maxLines` lines, then trim the head to `maxChars` (at a word
+// boundary) so the newest text always lands at the bottom of the screen.
+function tailWindow(text: string, maxLines: number, maxChars: number): string {
+  let window = text.split("\n").slice(-maxLines).join("\n");
+  if (window.length > maxChars) {
+    const cut = window.slice(window.length - maxChars);
+    const space = cut.indexOf(" ");
+    window = space > 0 ? cut.slice(space + 1) : cut;
+  }
+  return window;
 }
