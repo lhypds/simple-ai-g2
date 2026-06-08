@@ -135,8 +135,21 @@ async function main() {
     void sc.send(text);
   }
 
+  // Reset the conversation and memory: tell `sc` to drop its session memory
+  // (`:reset` also clears role/store/node), and wipe our local buffers so both
+  // views start clean. The CLI's "Reset." reply and fresh prompt arrive via the
+  // normal output stream.
+  function reset() {
+    draft = "";
+    terminal = "";
+    webLog = "";
+    renderAll(); // clear both views immediately, before the CLI responds
+    void sc.send(":reset");
+  }
+
   const ui = await createWebUI(bridge, {
     onSubmit: (text) => ask(text),
+    onRefresh: () => reset(),
     onInput: (text) => {
       draft = text;
       // Typing takes over from the mic: stop listening on the first keystroke so a

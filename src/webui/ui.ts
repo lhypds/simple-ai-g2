@@ -26,6 +26,14 @@ const USER_SVG = `
   <circle cx="12" cy="7" r="4"></circle>
 </svg>`;
 
+const REFRESH_SVG = `
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+  <path d="M23 4v6h-6"></path>
+  <path d="M1 20v-6h6"></path>
+  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+</svg>`;
+
 // Speech-to-text language choices. "" means auto-detect.
 const LANGUAGES: Array<{ value: string; label: string }> = [
   { value: "", label: "Auto-detect" },
@@ -58,6 +66,8 @@ export interface WebUIOptions {
   onInput: (text: string) => void;
   /** User saved Login credentials. */
   onLogin: (username: string, password: string) => void;
+  /** User pressed the refresh button to reset the conversation and memory. */
+  onRefresh: () => void;
   /** Speech language changed (also fired once with the saved value at startup). */
   onLanguageChange: (language: string) => void;
 }
@@ -77,6 +87,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
           <span class="app__status" data-status></span>
         </div>
         <div class="app__actions">
+          <button class="icon-btn" data-refresh aria-label="Reset conversation">${REFRESH_SVG}</button>
           <button class="icon-btn" data-open-login aria-label="Login">${USER_SVG}</button>
           <button class="icon-btn" data-open-settings aria-label="Settings">${GEAR_SVG}</button>
         </div>
@@ -191,6 +202,9 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     },
     { passive: false },
   );
+
+  // --- refresh (reset conversation + memory) ------------------------------
+  root.querySelector("[data-refresh]")!.addEventListener("click", () => options.onRefresh());
 
   // --- login modal --------------------------------------------------------
   const openLogin = () => {
