@@ -8,24 +8,28 @@ import { pcm16ToWav } from "./audioUtils";
 
 const ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
 
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
-const MODEL = (import.meta.env.VITE_OPENAI_MODEL as string | undefined) ?? "whisper-1";
+const MODEL = "whisper-1";
+
 // Default ISO-639-1 hint (e.g. "en", "ja", "zh"). Used when the caller doesn't pass
 // one. Leave unset for auto-detect.
-const DEFAULT_LANGUAGE = import.meta.env.VITE_STT_LANGUAGE as string | undefined;
+const DEFAULT_LANGUAGE = `en`;
+
+// The OpenAI API key is supplied at runtime from Settings (stored on-device), not
+// baked in at build time — so it never ships inside the .ehpk.
+let apiKey = "";
+
+export function setApiKey(key: string): void {
+  apiKey = key.trim();
+}
 
 export function hasApiKey(): boolean {
-  return Boolean(API_KEY);
+  return Boolean(apiKey);
 }
 
 // `language` is an optional ISO-639-1 hint chosen in Settings; empty/undefined
 // means auto-detect.
-export async function transcribe(
-  pcm: Uint8Array,
-  sampleRate: number,
-  language?: string,
-): Promise<string> {
-  if (!API_KEY) throw new Error("VITE_OPENAI_API_KEY is not set");
+export async function transcribe(pcm: Uint8Array, sampleRate: number, language?: string): Promise<string> {
+  if (!apiKey) throw new Error("OpenAI API key is not set");
 
   const lang = language || DEFAULT_LANGUAGE;
   const form = new FormData();
@@ -36,7 +40,7 @@ export async function transcribe(
 
   const res = await fetch(ENDPOINT, {
     method: "POST",
-    headers: { Authorization: `Bearer ${API_KEY}` },
+    headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
   });
 

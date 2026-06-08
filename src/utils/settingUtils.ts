@@ -11,13 +11,15 @@ const KEY = "webSettings";
 export interface Settings {
   username: string;
   password: string;
+  /** OpenAI API key, entered in Settings (kept on-device, not bundled at build time). */
+  apiKey: string;
   /** ISO-639-1 speech-to-text hint; "" means auto-detect. */
   language: string;
   /** UI theme: "light" | "dark" | "terminal". */
   theme: string;
 }
 
-const EMPTY: Settings = { username: "", password: "", language: "", theme: "light" };
+const EMPTY: Settings = { username: "", password: "", apiKey: "", language: "", theme: "light" };
 
 export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
   let raw = "";
@@ -32,6 +34,7 @@ export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
     return {
       username: parsed.username ?? "",
       password: parsed.password ?? "",
+      apiKey: parsed.apiKey ?? "",
       language: parsed.language ?? "",
       theme: parsed.theme ?? "light",
     };

@@ -1,7 +1,7 @@
 // Web-side UI rendered into #app:
 //   - a header with a Login button and a settings (gear) icon
 //   - a Login modal to set/save username + password (also logs `sc` in)
-//   - a Settings modal that holds only the speech-to-text language selection
+//   - a Settings modal for the OpenAI API key, speech-to-text language, and theme
 //   - a terminal panel that prints the `sc` (simple-ai-chat CLI) output stream,
 //     fed by a prompt-style input line and by finished voice transcripts
 //
@@ -49,6 +49,8 @@ export interface WebUIOptions {
   onRefresh: () => void;
   /** Speech language changed (also fired once with the saved value at startup). */
   onLanguageChange: (language: string) => void;
+  /** OpenAI API key changed (also fired once with the saved value at startup). */
+  onApiKeyChange: (apiKey: string) => void;
 }
 
 export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions): Promise<WebUI> {
@@ -102,6 +104,11 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
       <div class="modal__box">
         <h2 class="modal__title">Settings</h2>
         <label class="field">
+          <span class="field__label">OpenAI API key</span>
+          <input class="field__input" data-api-key type="password"
+                 placeholder="sk-…" autocomplete="off" />
+        </label>
+        <label class="field">
           <span class="field__label">Speech language</span>
           <select class="field__input" data-language>${langOptions}</select>
         </label>
@@ -128,6 +135,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const passwordInput = loginModal.querySelector<HTMLInputElement>("[data-password]")!;
 
   const settingsModal = document.querySelector<HTMLDivElement>("[data-settings-modal]")!;
+  const apiKeyInput = settingsModal.querySelector<HTMLInputElement>("[data-api-key]")!;
   const languageSelect = settingsModal.querySelector<HTMLSelectElement>("[data-language]")!;
   const themeSelect = settingsModal.querySelector<HTMLSelectElement>("[data-theme]")!;
   const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
@@ -135,6 +143,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   // Hold the persisted settings so saving one modal doesn't clobber the other's fields.
   let settings = await loadSettings(bridge);
   options.onLanguageChange(settings.language);
+  options.onApiKeyChange(settings.apiKey);
   applyTheme(settings.theme);
 
   // --- input line ---------------------------------------------------------
@@ -210,6 +219,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   // --- settings modal (language only) -------------------------------------
   const openSettings = () => {
+    apiKeyInput.value = settings.apiKey;
     languageSelect.value = settings.language;
     themeSelect.value = settings.theme;
     savedNote.classList.remove("modal__saved--show");
@@ -230,10 +240,12 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   themeSelect.addEventListener("change", () => applyTheme(themeSelect.value));
 
   settingsModal.querySelector("[data-save]")!.addEventListener("click", async () => {
+    const apiKey = apiKeyInput.value.trim();
     const language = languageSelect.value;
     const theme = themeSelect.value;
-    settings = { ...settings, language, theme };
+    settings = { ...settings, apiKey, language, theme };
     await saveSettings(bridge, settings);
+    options.onApiKeyChange(apiKey);
     options.onLanguageChange(language);
     applyTheme(theme);
     savedNote.classList.add("modal__saved--show");

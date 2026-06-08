@@ -3,7 +3,7 @@ import { createDisplay } from "./glassesui/glasses";
 import { createWebUI } from "./webui/webui";
 import { connectSc } from "./utils/scUtils";
 import { SpeechSegmenter } from "./utils/speechUtils";
-import { hasApiKey, transcribe } from "./utils/transcribeUtils";
+import { hasApiKey, setApiKey, transcribe } from "./utils/transcribeUtils";
 import { trailingPrompt, stripTrailingPrompt } from "./utils/textUtils";
 
 // The glasses mic streams single-channel 16 kHz / 16-bit PCM.
@@ -161,12 +161,16 @@ async function main() {
     onLanguageChange: (language) => {
       sttLanguage = language;
     },
+    onApiKeyChange: (apiKey) => {
+      setApiKey(apiKey);
+      // Recover from the no-key prompt once a key is entered in Settings.
+      if (apiKey) setStatus("● listening");
+    },
   });
 
   if (!hasApiKey()) {
     setStatus("⚠ No API key");
-    emit("Set VITE_OPENAI_API_KEY in .env and rebuild.\n");
-    return;
+    emit("Open Settings (⚙) and paste your OpenAI API key to start.\n");
   }
 
   // Each closed segment is sent off for transcription. We tag segments so a slow
