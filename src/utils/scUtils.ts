@@ -9,7 +9,7 @@
 // users never share one sc process / login / conversation on the server.
 
 /** Fixed sc-bridge server. The published app always talks to this host. */
-const SC_SERVER_BASE_URL = "http://159.223.204.39:5173/";
+const SC_SERVER_BASE_URL = "http://159.223.204.39:8787/";
 
 export interface ScHandlers {
   onChunk: (text: string) => void; // a piece of CLI output arrived

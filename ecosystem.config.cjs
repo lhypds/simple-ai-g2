@@ -2,7 +2,7 @@
 //
 // serve.mjs runs the `sc` (simple-ai-chat) CLI behind HTTP/SSE so the published
 // glasses app can reach it. The app talks to a fixed host (see SC_SERVER_BASE_URL
-// in src/utils/scUtils.ts: http://159.223.204.39:5173/), so this listens on 5173.
+// in src/utils/scUtils.ts: http://159.223.204.39:8787/), so this listens on 5173.
 //
 // Usage:
 //   pm2 start ecosystem.config.cjs        # start
