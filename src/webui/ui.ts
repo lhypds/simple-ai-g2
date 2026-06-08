@@ -10,7 +10,7 @@
 
 import "./ui.css";
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
-import { loadSettings, saveSettings } from "./utils/settingUtils";
+import { loadSettings, saveSettings } from "../utils/settingUtils";
 
 const GEAR_SVG = `
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

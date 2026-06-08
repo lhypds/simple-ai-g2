@@ -1,6 +1,6 @@
 import { waitForEvenAppBridge } from "@evenrealities/even_hub_sdk";
-import { createDisplay } from "./glasses";
-import { createWebUI } from "./ui";
+import { createDisplay } from "./glassesui/glasses";
+import { createWebUI } from "./webui/ui";
 import { connectSc } from "./utils/scUtils";
 import { SpeechSegmenter } from "./utils/speechUtils";
 import { hasApiKey, transcribe } from "./utils/transcribeUtils";
