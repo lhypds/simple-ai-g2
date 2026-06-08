@@ -10,16 +10,25 @@ export PATH="$PATH:/usr/sbin:/sbin"
 PORT=5173
 
 # Best-effort LAN IP so the QR/dev server is reachable from the glasses and
-# other devices on the network. Try the common interfaces, then fall back to
-# whichever one backs the default route.
+# other devices on the network. Works on macOS and Linux.
 lan_ip() {
   local ip iface
-  for iface in en0 en1 en2; do
-    ip="$(ipconfig getifaddr "$iface" 2>/dev/null || true)"
+  # macOS: ask the common interfaces directly.
+  if command -v ipconfig >/dev/null 2>&1; then
+    for iface in en0 en1 en2; do
+      ip="$(ipconfig getifaddr "$iface" 2>/dev/null || true)"
+      [ -n "$ip" ] && { echo "$ip"; return; }
+    done
+  fi
+  # Linux: source IP the kernel would use to reach the internet.
+  if command -v ip >/dev/null 2>&1; then
+    ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
     [ -n "$ip" ] && { echo "$ip"; return; }
-  done
-  iface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')"
-  [ -n "$iface" ] && ipconfig getifaddr "$iface" 2>/dev/null || true
+  fi
+  # Last resort (Linux): first address from hostname -I.
+  if command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | awk '{print $1}'
+  fi
 }
 
 IP="$(lan_ip)"
