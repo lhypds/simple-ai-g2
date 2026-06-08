@@ -54,7 +54,8 @@ async function main() {
     else if (generating) glassesView = terminal;
     else glassesView = terminal ? `${terminal}\n${lastPrompt}` : lastPrompt;
     ui.render(webView);
-    void display.render({ status: statusText, text: glassesView });
+    // Follow the bottom while generating so the streaming reply stays in view.
+    void display.render({ status: statusText, text: glassesView, follow: generating });
   }
 
   // Append CLI output to both buffers. They're independent: `terminal` is kept tidy
