@@ -2,7 +2,7 @@
 //
 // serve.mjs runs the `sc` (simple-ai-chat) CLI behind HTTP/SSE so the published
 // glasses app can reach it. The app talks to a fixed host (see SC_SERVER_BASE_URL
-// in src/utils/scUtils.ts: http://159.223.204.39:8787/), so this listens on 5173.
+// in src/utils/scUtils.ts: http://159.223.204.39:8787/), so this listens on 8787.
 //
 // Usage:
 //   pm2 start ecosystem.config.cjs        # start
@@ -27,7 +27,7 @@ module.exports = {
       max_memory_restart: "512M",
       env: {
         NODE_ENV: "production",
-        PORT: 5173,
+        PORT: 8787,
         // SC_ALLOW_ORIGIN: "*",
         // SC_SESSION_TTL: 120000,
       },

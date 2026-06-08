@@ -18,9 +18,9 @@ if [ ! -f node_modules/@rolldown/pluginutils/dist/index.mjs ]; then
 fi
 
 echo "==> Making helper scripts executable"
-chmod +x start.sh setup.sh serve.sh 2>/dev/null || true
+chmod +x start.sh stop.sh develop.sh setup.sh serve.sh 2>/dev/null || true
 
-echo "==> Checking evenhub CLI (used by start.sh for the QR code)"
+echo "==> Checking evenhub CLI (used by develop.sh for the QR code)"
 if command -v evenhub >/dev/null 2>&1; then
   echo "    evenhub found: $(command -v evenhub)"
 else
@@ -31,4 +31,5 @@ fi
 echo
 echo "Setup complete. Next:"
 echo "  1. Put your OpenAI key in .env (VITE_OPENAI_API_KEY)"
-echo "  2. ./start.sh   # dev server on 0.0.0.0:5173 (+ QR for the glasses)"
+echo "  2. ./develop.sh   # dev server on 0.0.0.0:5173 (+ QR for the glasses)"
+echo "     (or ./start.sh to run the sc-bridge backend under PM2)"
