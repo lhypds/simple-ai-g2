@@ -15,6 +15,12 @@ export interface SegmenterOptions {
   silenceHangoverMs?: number;
   /** Ignore segments shorter than this, in ms (filters out coughs/clicks). */
   minSegmentMs?: number;
+  /**
+   * Require at least this much *voiced* (above-threshold) audio, in ms, before a
+   * segment is emitted. A buffer that's mostly silence with a stray loud blip is
+   * dropped — this is what stops Whisper hallucinating "You" / "ご視聴…" on noise.
+   */
+  minVoicedMs?: number;
   /** Force a flush once a segment reaches this length, in ms. */
   maxSegmentMs?: number;
   /** Called with the segment's PCM bytes when a segment closes. */
@@ -28,11 +34,13 @@ export class SpeechSegmenter {
   private readonly silenceThreshold: number;
   private readonly silenceHangoverBytes: number;
   private readonly minSegmentBytes: number;
+  private readonly minVoicedBytes: number;
   private readonly maxSegmentBytes: number;
   private readonly onSegment: (pcm: Uint8Array) => void;
 
   private chunks: Uint8Array[] = [];
   private bufferedBytes = 0;
+  private voicedBytes = 0;
   private speaking = false;
   private trailingSilenceBytes = 0;
 
@@ -43,6 +51,7 @@ export class SpeechSegmenter {
     const bytesPerMs = (this.sampleRate * BYTES_PER_SAMPLE) / 1000;
     this.silenceHangoverBytes = Math.round((opts.silenceHangoverMs ?? 700) * bytesPerMs);
     this.minSegmentBytes = Math.round((opts.minSegmentMs ?? 400) * bytesPerMs);
+    this.minVoicedBytes = Math.round((opts.minVoicedMs ?? 300) * bytesPerMs);
     this.maxSegmentBytes = Math.round((opts.maxSegmentMs ?? 10000) * bytesPerMs);
   }
 
@@ -53,6 +62,7 @@ export class SpeechSegmenter {
     if (loud) {
       this.speaking = true;
       this.trailingSilenceBytes = 0;
+      this.voicedBytes += chunk.byteLength;
     } else if (this.speaking) {
       this.trailingSilenceBytes += chunk.byteLength;
     } else {
@@ -70,11 +80,15 @@ export class SpeechSegmenter {
 
   /** Emit whatever is buffered (e.g. when the mic is turned off). */
   flush(): void {
-    if (this.bufferedBytes >= this.minSegmentBytes) {
+    // Require both enough total audio AND enough voiced audio — a buffer that's
+    // long but mostly silence (a stray blip + dead air) is dropped, since that's
+    // exactly what makes Whisper hallucinate canned phrases.
+    if (this.bufferedBytes >= this.minSegmentBytes && this.voicedBytes >= this.minVoicedBytes) {
       this.onSegment(concatBytes(this.chunks, this.bufferedBytes));
     }
     this.chunks = [];
     this.bufferedBytes = 0;
+    this.voicedBytes = 0;
     this.speaking = false;
     this.trailingSilenceBytes = 0;
   }
