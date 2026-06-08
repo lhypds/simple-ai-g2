@@ -30,17 +30,19 @@ const BORDER_RADIUS = 28;
 const BORDER_COLOR = 5;
 const PADDING = 12;
 
-// We can't command the device's native scroll, so to keep the newest text on screen
-// while generating we send only the tail that fits one screen (see `tailRows`) — the
-// bottom of the reply then sits at the top of the visible area instead of scrolling
-// off below. These are rough estimates of the default font; tune against the glasses.
+// We can't command the device's native scroll, so we only ever send the tail that
+// fits one screen (see `tailRows`); if we send more, the content overflows the usable
+// area and the firmware draws a scroll bar. The usable height is the screen minus the
+// border AND the top+bottom padding (288 - 2 - 2*PADDING ≈ 262px), so these counts
+// must stay conservative — overshooting by even one row brings the scroll bar back.
+// Rough estimates of the default font; tune against the glasses.
 const CHARS_PER_LINE = 48; // how many chars fit on one wrapped row
-const SCREEN_ROWS = 10; // how many wrapped rows fit vertically
+const SCREEN_ROWS = 9; // how many wrapped rows fit vertically (kept low to avoid overflow)
 
 export interface Display {
-  // `follow`: trim to the last screenful so the bottom stays visible (used while
-  // generating, since the device's scroll can't be driven programmatically).
-  render(state: { status: string; text: string; follow?: boolean }): Promise<void>;
+  // Always renders the last screenful so the bottom stays visible — the device's
+  // scroll can't be driven programmatically, and trimming avoids a scroll bar.
+  render(state: { status: string; text: string }): Promise<void>;
 }
 
 export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
@@ -56,7 +58,7 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
     containerID: CONTAINER_ID,
     containerName: CONTAINER_NAME,
     content: "Starting…",
-    isEventCapture: 1, // let the container capture the device's scroll controls
+    isEventCapture: 1,
   });
 
   const result = await bridge.createStartUpPageContainer(
@@ -65,14 +67,16 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
   if (result !== 0) throw new Error(`createStartUpPageContainer failed: ${result}`);
 
   return {
-    async render({ status, text, follow }) {
+    async render({ status, text }) {
       // Send the whole buffer as the content; the device scrolls it natively. Trim
       // trailing newlines off the body so the status doesn't get pushed down by a
       // dangling blank line.
       let body = text.replace(/\n+$/, "");
-      // While generating, keep only the last screenful so the newest text stays in
-      // view (reserve a row for the status line appended below).
-      if (follow) body = tailRows(body, SCREEN_ROWS - (status ? 1 : 0), CHARS_PER_LINE);
+      // Always keep only the last screenful so the content never overflows the
+      // container — that's what makes the device draw a scroll bar. Trimming on
+      // every render (not just while generating) keeps the newest text in view and
+      // the scroll bar gone. Reserve a row for the status line appended below.
+      body = tailRows(body, SCREEN_ROWS - (status ? 1 : 0), CHARS_PER_LINE);
       const content = status ? (body ? `${body}\n${status}` : status) : body;
       await bridge.textContainerUpgrade(
         new TextContainerUpgrade({

@@ -60,11 +60,10 @@ async function main() {
     else if (generating) glassesView = terminal;
     else glassesView = terminal ? `${terminal}\n${lastPrompt}` : lastPrompt;
     ui?.render(webView);
-    // Follow the bottom whenever we're not previewing a typed draft: the streaming
-    // reply stays in view while generating, and once it finishes the tail — ending in
-    // the waiting "gpt-5.5>" prompt — stays pinned to the bottom instead of jumping
-    // back to the top.
-    void display.render({ status: statusText, text: glassesView, follow: !preview });
+    // The glasses always render the last screenful, so the streaming reply stays in
+    // view while generating and the tail — ending in the waiting "gpt-5.5>" prompt —
+    // stays pinned to the bottom instead of jumping back to the top.
+    void display.render({ status: statusText, text: glassesView });
   }
 
   // Append CLI output to both buffers. They're independent: `terminal` is kept tidy
@@ -90,7 +89,7 @@ async function main() {
     // after a typed exchange) is covered.
     if (!hasApiKey()) {
       listening = false;
-      setStatus("● no API key");
+      setStatus("");
       return;
     }
     const ok = await bridge.audioControl(true);
@@ -185,7 +184,7 @@ async function main() {
   });
 
   if (!hasApiKey()) {
-    setStatus("● no API key");
+    setStatus("");
     emit("Open Settings and paste your OpenAI API key to start voice recognition.\n");
   }
 
