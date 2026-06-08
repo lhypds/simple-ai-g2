@@ -179,7 +179,8 @@ body {
 
 .term-input__field {
   flex: 1;
-  padding: 10px 14px;
+  height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--btn);
   border-radius: 10px;
   background: var(--panel);
@@ -192,6 +193,11 @@ body {
     Menlo,
     Consolas,
     monospace;
+}
+
+/* Match the enter button's height to the input field beside it. */
+.term-input .btn {
+  height: 44px;
 }
 
 .term-input__field:focus {

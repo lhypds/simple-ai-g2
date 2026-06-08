@@ -230,6 +230,11 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   options.onApiKeyChange(settings.apiKey);
   options.onScServerChange(settings.scServerBaseUrl);
   applyTheme(settings.theme);
+  // Auto-login at startup if saved credentials exist (after onScServerChange has
+  // pointed the bridge at the right server).
+  if (settings.username && settings.password) {
+    options.onLogin(settings.username, settings.password);
+  }
 
   // --- input line ---------------------------------------------------------
   inputForm.addEventListener("submit", (e) => {
