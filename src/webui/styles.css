@@ -41,6 +41,10 @@
 
 * {
   box-sizing: border-box;
+  /* Suppress the iOS/webview tap highlight. Without this, tapping a button that
+     then disappears (e.g. Cancel closing a modal) leaves the gray highlight box
+     orphaned on screen until the next repaint. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
