@@ -1,4 +1,4 @@
-import { waitForEvenAppBridge, OsEventTypeList } from "@evenrealities/even_hub_sdk";
+import { waitForEvenAppBridge, OsEventTypeList, EventSourceType } from "@evenrealities/even_hub_sdk";
 import { createDisplay } from "./glassesui/glasses";
 import { createWebUI, type WebUI } from "./webui/webui";
 import { connectSc } from "./utils/scUtils";
@@ -252,9 +252,12 @@ async function main() {
       void display.showNextView();
       return;
     }
-    // Single-tap on the glasses starts a fresh conversation (clears the screen and
-    // drops `sc`'s session memory).
-    if (eventType === OsEventTypeList.CLICK_EVENT) {
+    // Single-tap arrives as a sysEvent carrying only an `eventSource` (the touch origin:
+    // glasses L/R or ring) with no `eventType` — the host doesn't emit CLICK_EVENT for it.
+    // Treat any such touch-sourced event without a type as a single tap: start a fresh
+    // conversation, and flash a confirmation on the web view.
+    const eventSource = event.sysEvent?.eventSource;
+    if (eventType == null && eventSource != null && eventSource !== EventSourceType.TOUCH_EVENT_FORM_DUMMY_NULL) {
       reset();
       return;
     }

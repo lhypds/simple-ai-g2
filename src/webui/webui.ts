@@ -112,6 +112,8 @@ export interface WebUI {
   setStatus(text: string): void;
   /** Replace the terminal output with the given text (kept in sync with the glasses). */
   render(text: string): void;
+  /** Briefly show a transient message (e.g. a glasses tap arrived). */
+  toast(text: string): void;
 }
 
 export interface WebUIOptions {
@@ -154,6 +156,8 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
         <button class="btn btn--primary" type="submit">enter</button>
       </form>
     </div>
+
+    <div class="toast" data-toast></div>
 
     <div class="modal" data-login-modal>
       <div class="modal__box">
@@ -207,6 +211,8 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const termEl = root.querySelector<HTMLPreElement>("[data-term]")!;
   const inputForm = root.querySelector<HTMLFormElement>("[data-input-form]")!;
   const inputField = root.querySelector<HTMLInputElement>("[data-input-field]")!;
+  const toastEl = root.querySelector<HTMLDivElement>("[data-toast]")!;
+  let toastTimer = 0; // pending hide timer, so back-to-back toasts don't hide early
 
   const loginModal = document.querySelector<HTMLDivElement>("[data-login-modal]")!;
   const usernameInput = loginModal.querySelector<HTMLInputElement>("[data-username]")!;
@@ -349,6 +355,12 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     render(text: string) {
       termEl.textContent = text;
       termEl.scrollTop = termEl.scrollHeight;
+    },
+    toast(text: string) {
+      toastEl.textContent = text;
+      toastEl.classList.add("toast--show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove("toast--show"), 2000);
     },
   };
 }
