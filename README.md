@@ -12,7 +12,7 @@ Publish
 Bump the version in `app.json`.  
 Run `./package.sh`  
 
-Update the generated `.ehpk` file to  
+Upload the generated `.ehpk` file to  
 [Even G2 Protal](https://hub.evenrealities.com/)  
 
 
