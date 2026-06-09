@@ -221,12 +221,19 @@ async function main() {
     setStatus("● listening");
   }
 
+  // Ask the host to show its exit confirmation layer (mode 1). The user decides whether
+  // to actually quit; if they confirm, the host fires SYSTEM_EXIT_EVENT and `shutdown`
+  // does the real teardown. We leave the mic running here since the exit may be cancelled.
+  async function requestExit() {
+    await bridge.shutDownPageContainer(1); // 1 = show the "exit?" interaction layer
+  }
+
   // Release resources and tear down the glasses page container. Called when the host
-  // signals the app is exiting (system close or abnormal exit) so the mic is freed and
-  // the container is shut down cleanly rather than left dangling.
+  // signals the app is exiting (the user confirmed exit, or an abnormal exit) so the mic
+  // is freed and the container is shut down cleanly rather than left dangling.
   async function shutdown() {
     await stopListening();
-    await bridge.shutDownPageContainer(0); // 0 = exit immediately
+    await bridge.shutDownPageContainer(0); // 0 = exit immediately (post-confirmation cleanup)
   }
 
   // Events from the glasses. The caption container captures touch-bar scrolls
@@ -245,8 +252,17 @@ async function main() {
       void display.showNextView();
       return;
     }
-    if (eventType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
+    // Single-tap on the glasses starts a fresh conversation (clears the screen and
+    // drops `sc`'s session memory).
+    if (eventType === OsEventTypeList.CLICK_EVENT) {
       reset();
+      return;
+    }
+    // Double-tap on the glasses asks the host to raise its exit confirmation dialog.
+    // It does NOT exit directly — the user confirms there, then SYSTEM_EXIT_EVENT below
+    // drives the actual teardown.
+    if (eventType === OsEventTypeList.DOUBLE_CLICK_EVENT) {
+      void requestExit();
       return;
     }
     // The host is closing the app (or it exited abnormally): free the mic and shut the
