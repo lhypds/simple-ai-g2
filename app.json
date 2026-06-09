@@ -13,7 +13,7 @@
       "whitelist": ["https://api.openai.com", "http://159.223.204.39:8787"]
     },
     {
-      "name": "microphone",
+      "name": "g2-microphone",
       "desc": "This app needs the glasses microphone to capture speech for voice transcription."
     }
   ],
