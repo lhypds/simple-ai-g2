@@ -105,10 +105,24 @@ async function main() {
     await bridge.audioControl(false);
   }
 
+  // Auto-login is deferred until the CLI is ready: a login sent before the `sc`
+  // process has started and printed its first prompt is lost, so we hold the saved
+  // credentials here and send them on the first `onReady` (when "gpt-5.5>" shows).
+  let scReady = false;
+  let pendingLogin: { username: string; password: string } | null = null;
+
   // The `sc` CLI bridge: stream its output into the terminal as it arrives.
   const sc = connectSc({
     onChunk: (text) => emit(text),
     onReady: () => {
+      // First idle prompt: the CLI can now accept input, so flush any queued login.
+      if (!scReady) {
+        scReady = true;
+        if (pendingLogin) {
+          void sc.login(pendingLogin.username, pendingLogin.password);
+          pendingLogin = null;
+        }
+      }
       // The CLI is idle, having just printed its prompt. Remember it (so a cleared
       // screen still shows it), then drop it from the glasses buffer — this is the
       // one moment we know the trailing `>` is the prompt and not part of a reply
@@ -173,7 +187,13 @@ async function main() {
       if (text && listening) void stopListening();
       renderAll();
     },
-    onLogin: (username, password) => void sc.login(username, password),
+    // Manual login (button) goes through immediately — the CLI is already idle by
+    // then. Startup auto-login fires before the CLI is ready, so it's queued and
+    // sent on the first onReady above.
+    onLogin: (username, password) => {
+      if (scReady) void sc.login(username, password);
+      else pendingLogin = { username, password };
+    },
     onLanguageChange: (language) => {
       sttLanguage = language;
     },
