@@ -34,6 +34,7 @@ async function main() {
   // on the glasses; `listening` gates audio so nothing is captured meanwhile.
   let generating = false;
   let listening = false;
+  let transcriptionEnabled = true;
 
   // The in-progress line typed in the web input box. Mirrored live to both views
   // (prefixed with the prompt) so the glasses show what's being typed before submit.
@@ -90,6 +91,7 @@ async function main() {
   }
 
   async function startListening() {
+    if (!transcriptionEnabled) return;
     // Voice recognition needs the OpenAI key. Never enable the mic or show
     // "listening" without one — guard here so every caller (startup, and onReady
     // after a typed exchange) is covered.
@@ -231,6 +233,11 @@ async function main() {
     },
     onCursorBlinkChange: (blink) => {
       display.setCursorBlink(blink);
+    },
+    onTranscriptionChange: (enabled) => {
+      transcriptionEnabled = enabled;
+      if (enabled) void startListening();
+      else void stopListening();
     },
   });
 

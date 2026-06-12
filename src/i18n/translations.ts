@@ -11,9 +11,9 @@ export interface Translations {
   settingsTitle: string;
   fieldApiKey: string;
   fieldSpeechLang: string;
-  fieldUiLang: string;
   fieldTheme: string;
   toggleCursorBlink: string;
+  toggleTranscription: string;
   btnSave: string;
   savedNote: string;
   versionPrefix: string;
@@ -37,9 +37,9 @@ const en: Translations = {
   settingsTitle: "Settings",
   fieldApiKey: "OpenAI API key",
   fieldSpeechLang: "Speech language",
-  fieldUiLang: "UI language",
   fieldTheme: "Theme",
   toggleCursorBlink: "Cursor blink",
+  toggleTranscription: "Voice transcription",
   btnSave: "Save",
   savedNote: "Saved ✓",
   versionPrefix: "Version",
@@ -63,9 +63,9 @@ const ja: Translations = {
   settingsTitle: "設定",
   fieldApiKey: "OpenAI APIキー",
   fieldSpeechLang: "音声言語",
-  fieldUiLang: "表示言語",
   fieldTheme: "テーマ",
   toggleCursorBlink: "カーソル点滅",
+  toggleTranscription: "文字起こし",
   btnSave: "保存",
   savedNote: "保存済み ✓",
   versionPrefix: "バージョン",
@@ -89,9 +89,9 @@ const zh: Translations = {
   settingsTitle: "设置",
   fieldApiKey: "OpenAI API 密钥",
   fieldSpeechLang: "语音语言",
-  fieldUiLang: "界面语言",
   fieldTheme: "主题",
   toggleCursorBlink: "光标闪烁",
+  toggleTranscription: "语音转录",
   btnSave: "保存",
   savedNote: "已保存 ✓",
   versionPrefix: "版本",
@@ -115,9 +115,9 @@ const zt: Translations = {
   settingsTitle: "設定",
   fieldApiKey: "OpenAI API 金鑰",
   fieldSpeechLang: "語音語言",
-  fieldUiLang: "介面語言",
   fieldTheme: "主題",
   toggleCursorBlink: "游標閃爍",
+  toggleTranscription: "語音轉錄",
   btnSave: "儲存",
   savedNote: "已儲存 ✓",
   versionPrefix: "版本",
@@ -141,9 +141,9 @@ const ko: Translations = {
   settingsTitle: "설정",
   fieldApiKey: "OpenAI API 키",
   fieldSpeechLang: "음성 언어",
-  fieldUiLang: "화면 언어",
   fieldTheme: "테마",
   toggleCursorBlink: "커서 깜박임",
+  toggleTranscription: "음성 인식",
   btnSave: "저장",
   savedNote: "저장됨 ✓",
   versionPrefix: "버전",

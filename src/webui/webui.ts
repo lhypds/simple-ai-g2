@@ -12,7 +12,7 @@ import "./styles.css";
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { loadSettings, saveSettings } from "../utils/settingUtils";
 import { GEAR_SVG, USER_SVG, REFRESH_SVG } from "../assets/icons";
-import { t, setLocale, parseLocale, UI_LANGUAGES } from "../i18n";
+import { t, setLocale, parseLocale } from "../i18n";
 
 // App version, injected at build time from app.json (see vite.config.ts `define`).
 declare const __APP_VERSION__: string;
@@ -158,6 +158,8 @@ export interface WebUIOptions {
   onApiKeyChange: (apiKey: string) => void;
   /** Cursor blink setting changed (also fired once with the saved value at startup). */
   onCursorBlinkChange: (blink: boolean) => void;
+  /** Transcription enabled/disabled (also fired once with the saved value at startup). */
+  onTranscriptionChange: (enabled: boolean) => void;
 }
 
 export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions): Promise<WebUI> {
@@ -166,7 +168,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   // Load settings and apply locale before building the HTML so t() is ready.
   let settings = await loadSettings(bridge);
-  setLocale(parseLocale(settings.uiLanguage));
+  setLocale(parseLocale(""));
 
   root.innerHTML = `
     <div class="app">
@@ -223,16 +225,17 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
           <div data-language></div>
         </div>
         <div class="field">
-          <span class="field__label" data-i18n-ui-lang>${t("fieldUiLang")}</span>
-          <div data-ui-language></div>
-        </div>
-        <div class="field">
           <span class="field__label" data-i18n-theme>${t("fieldTheme")}</span>
           <div data-theme></div>
         </div>
         <label class="switch">
           <span data-i18n-cursor-blink>${t("toggleCursorBlink")}</span>
           <input type="checkbox" data-cursor-blink />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+        <label class="switch">
+          <span data-i18n-transcription>${t("toggleTranscription")}</span>
+          <input type="checkbox" data-transcription />
           <span class="switch__track"><span class="switch__thumb"></span></span>
         </label>
         <div class="modal__actions">
@@ -259,14 +262,13 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const settingsModal = document.querySelector<HTMLDivElement>("[data-settings-modal]")!;
   const apiKeyInput = settingsModal.querySelector<HTMLInputElement>("[data-api-key]")!;
   const languageSelect = createDropdown(speechLanguages(), () => {});
-  const uiLanguageSelect = createDropdown(UI_LANGUAGES, () => {});
   // Preview the theme live as the user picks (reverted on Cancel via closeSettings).
   const themeSelect = createDropdown(themes(), (value) => applyTheme(value));
   settingsModal.querySelector<HTMLDivElement>("[data-language]")!.appendChild(languageSelect.el);
-  settingsModal.querySelector<HTMLDivElement>("[data-ui-language]")!.appendChild(uiLanguageSelect.el);
   settingsModal.querySelector<HTMLDivElement>("[data-theme]")!.appendChild(themeSelect.el);
   const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
   const cursorBlinkCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-cursor-blink]")!;
+  const transcriptionCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-transcription]")!;
 
   // Updates all translatable text nodes after a locale switch.
   const applyTranslations = () => {
@@ -279,9 +281,9 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     settingsModal.querySelector("[data-i18n-settings-title]")!.textContent = t("settingsTitle");
     settingsModal.querySelector("[data-i18n-api-key]")!.textContent = t("fieldApiKey");
     settingsModal.querySelector("[data-i18n-speech-lang]")!.textContent = t("fieldSpeechLang");
-    settingsModal.querySelector("[data-i18n-ui-lang]")!.textContent = t("fieldUiLang");
     settingsModal.querySelector("[data-i18n-theme]")!.textContent = t("fieldTheme");
     settingsModal.querySelector("[data-i18n-cursor-blink]")!.textContent = t("toggleCursorBlink");
+    settingsModal.querySelector("[data-i18n-transcription]")!.textContent = t("toggleTranscription");
     settingsModal.querySelector("[data-i18n-saved]")!.textContent = t("savedNote");
     settingsModal.querySelector("[data-i18n-cancel-settings]")!.textContent = t("btnCancel");
     settingsModal.querySelector("[data-i18n-save]")!.textContent = t("btnSave");
@@ -295,6 +297,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   applyTheme(settings.theme);
   termEl.classList.toggle("term--cursor-blink", settings.cursorBlink);
   options.onCursorBlinkChange(settings.cursorBlink);
+  options.onTranscriptionChange(settings.transcription);
   // Auto-login at startup if saved credentials exist.
   if (settings.username && settings.password) {
     options.onLogin(settings.username, settings.password);
@@ -382,9 +385,9 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const openSettings = () => {
     apiKeyInput.value = settings.apiKey;
     languageSelect.value = settings.language;
-    uiLanguageSelect.value = settings.uiLanguage || parseLocale(settings.uiLanguage);
     themeSelect.value = settings.theme;
     cursorBlinkCheckbox.checked = settings.cursorBlink;
+    transcriptionCheckbox.checked = settings.transcription;
     savedNote.classList.remove("modal__saved--show");
     settingsModal.classList.add("modal--open");
   };
@@ -402,17 +405,17 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   settingsModal.querySelector("[data-save]")!.addEventListener("click", async () => {
     const apiKey = apiKeyInput.value.trim();
     const language = languageSelect.value;
-    const uiLanguage = uiLanguageSelect.value;
     const theme = themeSelect.value;
     const cursorBlink = cursorBlinkCheckbox.checked;
-    settings = { ...settings, apiKey, language, uiLanguage, theme, cursorBlink };
+    const transcription = transcriptionCheckbox.checked;
+    settings = { ...settings, apiKey, language, theme, cursorBlink, transcription };
     await saveSettings(bridge, settings);
     options.onApiKeyChange(apiKey);
     options.onLanguageChange(language);
     applyTheme(theme);
     termEl.classList.toggle("term--cursor-blink", cursorBlink);
     options.onCursorBlinkChange(cursorBlink);
-    setLocale(parseLocale(uiLanguage));
+    options.onTranscriptionChange(transcription);
     applyTranslations();
     savedNote.classList.add("modal__saved--show");
     setTimeout(closeSettings, 600);

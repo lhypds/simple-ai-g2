@@ -21,8 +21,8 @@ export interface Settings {
   loginSave: boolean;
   /** Whether the idle cursor blinks; false = static block. */
   cursorBlink: boolean;
-  /** UI display language: "en" | "ja" | "zh". "" means follow browser locale. */
-  uiLanguage: string;
+  /** Whether speech-to-text transcription is enabled. */
+  transcription: boolean;
 }
 
 const EMPTY: Settings = {
@@ -33,7 +33,7 @@ const EMPTY: Settings = {
   theme: "light",
   loginSave: true,
   cursorBlink: false,
-  uiLanguage: "",
+  transcription: true,
 };
 
 // The bridge's storage calls can hang on the real device (they resolve on the
@@ -82,7 +82,7 @@ export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
       theme: parsed.theme ?? "light",
       loginSave: parsed.loginSave ?? true,
       cursorBlink: parsed.cursorBlink ?? false,
-      uiLanguage: parsed.uiLanguage ?? "",
+      transcription: parsed.transcription ?? true,
     };
   } catch {
     return { ...EMPTY };
