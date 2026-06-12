@@ -119,14 +119,7 @@ async function main() {
   const sc = connectSc({
     onChunk: (text) => emit(text),
     onReady: () => {
-      // First idle prompt: the CLI can now accept input, so flush any queued login.
-      if (!scReady) {
-        scReady = true;
-        if (pendingLogin) {
-          void sc.login(pendingLogin.username, pendingLogin.password);
-          pendingLogin = null;
-        }
-      }
+      if (!scReady) scReady = true;
       // The CLI is idle, having just printed its prompt. Remember it (so a cleared
       // screen still shows it), then drop it from the glasses buffer — this is the
       // one moment we know the trailing `>` is the prompt and not part of a reply
@@ -144,6 +137,13 @@ async function main() {
       if (generating) {
         generating = false;
         void startListening();
+      }
+      // Flush any queued login AFTER the prompt is rendered, so echoLogin sees the
+      // correct lastPrompt and the "gpt-5.5>" line appears before the :login echo.
+      if (pendingLogin) {
+        echoLogin(pendingLogin.username, pendingLogin.password);
+        void sc.login(pendingLogin.username, pendingLogin.password);
+        pendingLogin = null;
       }
     },
     onUnavailable: () => emit("\n[sc bridge unavailable — run `npm run dev`]\n"),
@@ -166,6 +166,20 @@ async function main() {
     void stopListening(); // clears the status; set "generating" after so it wins
     setStatus("● generating"); // re-renders both views
     void sc.send(text);
+  }
+
+  // Echo a login command to both views with the password masked, then flip to
+  // generating state so the response streams in on the next line.
+  function echoLogin(username: string, password: string) {
+    const masked = "*".repeat(password.length);
+    const line = `:login ${username} ${masked}\n`;
+    display.followLive();
+    terminal = `${lastPrompt}${line}`;
+    const stripped = stripTrailingPrompt(webLog);
+    webLog = (stripped + `${lastPrompt}${line}`).slice(-WEB_LOG_MAX);
+    generating = true;
+    void stopListening();
+    setStatus("● generating");
   }
 
   // Reset the conversation and memory: tell `sc` to drop its session memory
@@ -197,8 +211,12 @@ async function main() {
     // then. Startup auto-login fires before the CLI is ready, so it's queued and
     // sent on the first onReady above.
     onLogin: (username, password) => {
-      if (scReady) void sc.login(username, password);
-      else pendingLogin = { username, password };
+      if (scReady) {
+        echoLogin(username, password);
+        void sc.login(username, password);
+      } else {
+        pendingLogin = { username, password };
+      }
     },
     onLanguageChange: (language) => {
       sttLanguage = language;
