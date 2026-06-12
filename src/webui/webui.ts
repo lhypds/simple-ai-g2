@@ -273,6 +273,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   const setApiKeyDependentState = (hasKey: boolean) => {
     transcriptionCheckbox.disabled = !hasKey;
+    if (!hasKey) transcriptionCheckbox.checked = false;
     speechLangField.classList.toggle("field--disabled", !hasKey);
   };
 
@@ -395,9 +396,13 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     themeSelect.value = settings.theme;
     cursorBlinkCheckbox.checked = settings.cursorBlink;
     transcriptionCheckbox.checked = settings.transcription;
+    setApiKeyDependentState(!!settings.apiKey);
     savedNote.classList.remove("modal__saved--show");
     settingsModal.classList.add("modal--open");
   };
+  apiKeyInput.addEventListener("input", () => {
+    setApiKeyDependentState(!!apiKeyInput.value.trim());
+  });
   const closeSettings = () => {
     applyTheme(settings.theme); // discard any unsaved live preview
     settingsModal.classList.remove("modal--open");
