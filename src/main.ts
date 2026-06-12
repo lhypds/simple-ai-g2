@@ -178,6 +178,7 @@ async function main() {
     webLog = "";
     display.followLive(); // drop any scrollback so the cleared live view shows
     renderAll(); // clear both views immediately, before the CLI responds
+    emit(":help for help\n");
     void sc.send(":reset");
   }
 
