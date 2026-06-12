@@ -99,6 +99,14 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
   let cursorVisible = false;
   let cursorIntervalId = 0;
 
+  // Render serializer: while a SDK send is in flight, incoming render() calls just
+  // update `last` and raise a flag. When the send completes, one follow-up send
+  // delivers the latest state — collapsing all intermediate chunks into a single
+  // update. This prevents a backlog from forming when chunks arrive faster than the
+  // glasses can display them.
+  let liveRenderInFlight = false;
+  let liveRenderPending = false;
+
   // One screenful for history paging. We always reserve a row for the position
   // indicator, matching the live view's reserved status row.
   const VIEW_ROWS = SCREEN_ROWS - 1;
@@ -129,6 +137,19 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
     await send(content);
   }
 
+  async function scheduleLiveRender() {
+    if (liveRenderInFlight) {
+      liveRenderPending = true;
+      return;
+    }
+    liveRenderInFlight = true;
+    do {
+      liveRenderPending = false;
+      await renderLive();
+    } while (liveRenderPending);
+    liveRenderInFlight = false;
+  }
+
   async function renderHistory() {
     const rows = visualRows(frozen ?? "", CHARS_PER_LINE);
     const total = rows.length;
@@ -151,7 +172,7 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
       last = state;
       // While paging through history, hold the shown page; just keep the live state
       // current so we can snap back to it later.
-      if (frozen === null) await renderLive();
+      if (frozen === null) void scheduleLiveRender();
     },
 
     async showPreviousView() {
@@ -172,7 +193,7 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
       if (offset <= 0) {
         frozen = null;
         offset = 0;
-        await renderLive();
+        await scheduleLiveRender();
         return;
       }
       await renderHistory();
@@ -190,7 +211,7 @@ export async function createDisplay(bridge: EvenAppBridge): Promise<Display> {
         cursorVisible = true;
         cursorIntervalId = window.setInterval(() => {
           cursorVisible = !cursorVisible;
-          if (frozen === null) void renderLive();
+          if (frozen === null) void scheduleLiveRender();
         }, 500);
       } else {
         window.clearInterval(cursorIntervalId);
