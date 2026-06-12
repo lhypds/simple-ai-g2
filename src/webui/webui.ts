@@ -151,12 +151,8 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
         </div>
       </header>
       <pre class="term" data-term></pre>
-      <form class="term-input" data-input-form>
-        <span class="term-input__prompt">&gt;</span>
-        <input class="term-input__field" data-input-field type="text"
-               placeholder="Type a message…" autocomplete="off" />
-        <button class="btn btn--primary" type="submit">enter</button>
-      </form>
+      <input class="hidden-input" data-input-field type="text"
+             autocomplete="off" enterkeyhint="send" />
     </div>
 
     <div class="toast" data-toast></div>
@@ -211,7 +207,6 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   const statusEl = root.querySelector<HTMLSpanElement>("[data-status]")!;
   const termEl = root.querySelector<HTMLPreElement>("[data-term]")!;
-  const inputForm = root.querySelector<HTMLFormElement>("[data-input-form]")!;
   const inputField = root.querySelector<HTMLInputElement>("[data-input-field]")!;
   const toastEl = root.querySelector<HTMLDivElement>("[data-toast]")!;
   let toastTimer = 0; // pending hide timer, so back-to-back toasts don't hide early
@@ -241,7 +236,12 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   }
 
   // --- input line ---------------------------------------------------------
-  inputForm.addEventListener("submit", (e) => {
+  // Tap anywhere on the terminal to open the keyboard.
+  termEl.addEventListener("click", () => inputField.focus());
+
+  // Submit on the keyboard's Enter/Return key.
+  inputField.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
     e.preventDefault();
     const text = inputField.value.trim();
     if (text) options.onSubmit(text);
@@ -254,8 +254,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   inputField.addEventListener("input", () => options.onInput(inputField.value));
 
   // On iOS the on-screen keyboard overlays the page instead of resizing it, so
-  // the bottom-pinned input gets hidden behind the keyboard. Shrink the app to
-  // the visible (visual viewport) area so the input stays above the keyboard.
+  // the terminal shrinks to the visible (visual viewport) area and stays readable.
   const appEl = root.querySelector<HTMLDivElement>(".app")!;
   const viewport = window.visualViewport;
   if (viewport) {
@@ -265,10 +264,6 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     };
     viewport.addEventListener("resize", syncViewport);
     viewport.addEventListener("scroll", syncViewport);
-    // After the keyboard finishes animating in, make sure the field is in view.
-    inputField.addEventListener("focus", () => {
-      window.setTimeout(() => inputField.scrollIntoView({ block: "end" }), 300);
-    });
   }
 
   // iOS Safari ignores `user-scalable=no`, so cancel its pinch-zoom gesture

@@ -176,50 +176,17 @@ body {
   color: var(--text);
 }
 
-.term-input {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--bg);
+/* Invisible input that captures keyboard input; focused by tapping the terminal. */
+.hidden-input {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  bottom: 0;
+  left: 0;
 }
 
-.term-input__prompt {
-  color: var(--btn);
-  font-family: "Fira Code VF", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  font-weight: 600;
-}
-
-.term-input__field {
-  flex: 1;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--btn);
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--text);
-  font:
-    16px/1.5 "Fira Code VF",
-    ui-monospace,
-    SFMono-Regular,
-    "SF Mono",
-    Menlo,
-    Consolas,
-    monospace;
-}
-
-/* Match the enter button's height to the input field beside it. */
-.term-input .btn {
-  height: 44px;
-}
-
-.term-input__field:focus {
-  outline: none;
-  border-color: var(--focus);
-}
-
-.term-input__field::placeholder,
 .field__input::placeholder {
   color: var(--placeholder);
 }
