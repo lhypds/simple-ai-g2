@@ -205,6 +205,9 @@ async function main() {
     onRefresh: () => reset(),
     onInput: (text) => {
       draft = text;
+      // Jump back to the live view as soon as the user starts typing so they
+      // can see the prompt they're replying to.
+      if (text) display.followLive();
       // Typing takes over from the mic: stop listening on the first keystroke so a
       // typed message isn't competing with captured speech. Resume when cleared.
       if (text && listening) void stopListening();
