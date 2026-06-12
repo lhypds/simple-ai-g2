@@ -26,6 +26,7 @@ async function main() {
   let webLog = "";
   let statusText = "";
   let sttLanguage = ""; // ISO-639-1 hint from Settings; "" = auto-detect.
+
   // The CLI prompt (e.g. "gpt-5.5> ") captured from the last reply, so we can keep
   // it on screen when we clear for a new conversation.
   let lastPrompt = "";
@@ -35,6 +36,10 @@ async function main() {
   let generating = false;
   let listening = false;
   let transcriptionEnabled = true;
+
+  // Set to true on reset so that stale in-flight chunks from the previous
+  // generation are discarded until the server's :reset reply arrives.
+  let discardChunks = false;
 
   // The in-progress line typed in the web input box. Mirrored live to both views
   // (prefixed with the prompt) so the glasses show what's being typed before submit.
@@ -118,8 +123,12 @@ async function main() {
 
   // The `sc` CLI bridge: stream its output into the terminal as it arrives.
   const sc = connectSc({
-    onChunk: (text) => emit(text),
+    onChunk: (text) => {
+      if (!discardChunks) emit(text);
+    },
     onReady: () => {
+      const wasDiscarding = discardChunks;
+      discardChunks = false;
       if (!scReady) scReady = true;
       // The CLI is idle, having just printed its prompt. Remember it (so a cleared
       // screen still shows it), then drop it from the glasses buffer — this is the
@@ -137,6 +146,11 @@ async function main() {
       // A reply finished: resume listening for the next utterance.
       if (generating) {
         generating = false;
+        if (wasDiscarding) {
+          // The reset discarded the server's reply (including the new prompt).
+          // Manually append lastPrompt to webLog so the web UI shows it.
+          webLog = (webLog + lastPrompt).slice(-WEB_LOG_MAX);
+        }
         renderAll(); // show cursor immediately, regardless of whether listening starts
         void startListening();
       }
@@ -193,9 +207,10 @@ async function main() {
     webLog = "";
     display.followLive();
     generating = true; // suppress lastPrompt appending until onReady fires
+    discardChunks = true; // drop in-flight chunks from the previous generation
     void stopListening();
     setStatus("");
-    emit(":help for help\n");
+    emit(":help for help\n\n");
     void sc.send(":reset");
   }
 
