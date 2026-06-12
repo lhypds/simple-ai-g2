@@ -35,7 +35,7 @@ const en: Translations = {
   btnCancel: "Cancel",
   btnLogin: "Login",
   settingsTitle: "Settings",
-  fieldApiKey: "OpenAI API key",
+  fieldApiKey: "OpenAI API key (for voice transcription)",
   fieldSpeechLang: "Speech language",
   fieldTheme: "Theme",
   toggleCursorBlink: "Blink cursor",
@@ -48,7 +48,7 @@ const en: Translations = {
   themeDark: "Dark",
   themeTerminal: "Terminal",
   message: {
-    noApiKey: "Open Settings and set OpenAI API key to start voice recognition.",
+    noApiKey: "Open Settings and set OpenAI API key to start voice transcription.",
   },
 };
 
@@ -61,7 +61,7 @@ const ja: Translations = {
   btnCancel: "キャンセル",
   btnLogin: "ログイン",
   settingsTitle: "設定",
-  fieldApiKey: "OpenAI APIキー",
+  fieldApiKey: "OpenAI APIキー（文字起こし用）",
   fieldSpeechLang: "音声言語",
   fieldTheme: "テーマ",
   toggleCursorBlink: "カーソル点滅",
@@ -87,7 +87,7 @@ const zh: Translations = {
   btnCancel: "取消",
   btnLogin: "登录",
   settingsTitle: "设置",
-  fieldApiKey: "OpenAI API 密钥",
+  fieldApiKey: "OpenAI API 密钥（用于语音转录）",
   fieldSpeechLang: "语音语言",
   fieldTheme: "主题",
   toggleCursorBlink: "光标闪烁",
@@ -113,11 +113,11 @@ const zt: Translations = {
   btnCancel: "取消",
   btnLogin: "登入",
   settingsTitle: "設定",
-  fieldApiKey: "OpenAI API 金鑰",
+  fieldApiKey: "OpenAI API 金鑰（文字轉錄用）",
   fieldSpeechLang: "語音語言",
   fieldTheme: "主題",
   toggleCursorBlink: "游標閃爍",
-  toggleTranscription: "語音轉錄",
+  toggleTranscription: "文字轉錄",
   btnSave: "儲存",
   savedNote: "已儲存 ✓",
   versionPrefix: "版本",
@@ -126,7 +126,7 @@ const zt: Translations = {
   themeDark: "深色",
   themeTerminal: "終端機",
   message: {
-    noApiKey: "請開啟設定並設定您的 OpenAI API 金鑰以開始語音辨識。",
+    noApiKey: "請開啟設定並設定您的 OpenAI API 金鑰以開始文字轉錄。",
   },
 };
 
@@ -139,11 +139,11 @@ const ko: Translations = {
   btnCancel: "취소",
   btnLogin: "로그인",
   settingsTitle: "설정",
-  fieldApiKey: "OpenAI API 키",
+  fieldApiKey: "OpenAI API 키 (음성 전사용)",
   fieldSpeechLang: "음성 언어",
   fieldTheme: "테마",
   toggleCursorBlink: "커서 깜박임",
-  toggleTranscription: "음성 인식",
+  toggleTranscription: "음성 전사",
   btnSave: "저장",
   savedNote: "저장됨 ✓",
   versionPrefix: "버전",
@@ -152,7 +152,7 @@ const ko: Translations = {
   themeDark: "다크",
   themeTerminal: "터미널",
   message: {
-    noApiKey: "설정을 열고 OpenAI API 키를 설정하면 음성 인식이 시작됩니다。",
+    noApiKey: "설정을 열고 OpenAI API 키를 설정하면 음성 전사가 시작됩니다。",
   },
 };
 

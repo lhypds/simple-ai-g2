@@ -95,7 +95,7 @@ async function main() {
 
   async function startListening() {
     if (!transcriptionEnabled) return;
-    // Voice recognition needs the OpenAI key. Never enable the mic or show
+    // Voice transcription needs the OpenAI key. Never enable the mic or show
     // "listening" without one — guard here so every caller (startup, and onReady
     // after a typed exchange) is covered.
     if (!hasApiKey()) {
@@ -244,7 +244,7 @@ async function main() {
     },
     onApiKeyChange: (apiKey) => {
       setApiKey(apiKey);
-      // Voice recognition needs the OpenAI key, so the mic follows the key: start
+      // Voice transcription needs the OpenAI key, so the mic follows the key: start
       // listening when one is present (also on startup, with the saved key), stop
       // when it's missing or removed. With no key we never start listening.
       if (apiKey) void startListening();
