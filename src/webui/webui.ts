@@ -215,17 +215,17 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     <div class="modal" data-settings-modal>
       <div class="modal__box">
         <h2 class="modal__title" data-i18n-settings-title>${t("settingsTitle")}</h2>
-        <label class="switch">
-          <span data-i18n-transcription>${t("toggleTranscription")}</span>
-          <input type="checkbox" data-transcription />
-          <span class="switch__track"><span class="switch__thumb"></span></span>
-        </label>
         <label class="field">
           <span class="field__label" data-i18n-api-key>${t("fieldApiKey")}</span>
           <input class="field__input" data-api-key type="password"
                  placeholder="sk-" autocomplete="off" />
         </label>
-        <div class="field">
+        <label class="switch">
+          <span data-i18n-transcription>${t("toggleTranscription")}</span>
+          <input type="checkbox" data-transcription />
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+        </label>
+        <div class="field" data-speech-lang-field>
           <span class="field__label" data-i18n-speech-lang>${t("fieldSpeechLang")}</span>
           <div data-language></div>
         </div>
@@ -269,6 +269,12 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
   const cursorBlinkCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-cursor-blink]")!;
   const transcriptionCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-transcription]")!;
+  const speechLangField = settingsModal.querySelector<HTMLDivElement>("[data-speech-lang-field]")!;
+
+  const setApiKeyDependentState = (hasKey: boolean) => {
+    transcriptionCheckbox.disabled = !hasKey;
+    speechLangField.classList.toggle("field--disabled", !hasKey);
+  };
 
   // Updates all translatable text nodes after a locale switch.
   const applyTranslations = () => {
@@ -297,6 +303,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   applyTheme(settings.theme);
   termEl.classList.toggle("term--cursor-blink", settings.cursorBlink);
   options.onCursorBlinkChange(settings.cursorBlink);
+  setApiKeyDependentState(!!settings.apiKey);
   options.onTranscriptionChange(settings.transcription);
   // Auto-login at startup if saved credentials exist.
   if (settings.username && settings.password) {
@@ -415,6 +422,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     applyTheme(theme);
     termEl.classList.toggle("term--cursor-blink", cursorBlink);
     options.onCursorBlinkChange(cursorBlink);
+    setApiKeyDependentState(!!apiKey);
     options.onTranscriptionChange(transcription);
     applyTranslations();
     savedNote.classList.add("modal__saved--show");

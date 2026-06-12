@@ -228,6 +228,11 @@ body {
   display: block;
 }
 
+.field--disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .field__label {
   display: block;
   font-size: 13px;
@@ -263,6 +268,12 @@ body {
   color: var(--text);
   cursor: pointer;
   user-select: none;
+}
+
+.switch:has(input:disabled) {
+  opacity: 0.35;
+  pointer-events: none;
+  cursor: default;
 }
 
 .switch input {

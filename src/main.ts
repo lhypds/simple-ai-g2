@@ -166,7 +166,7 @@ async function main() {
     webLog = (stripped + `${lastPrompt}${text}\n`).slice(-WEB_LOG_MAX);
     generating = true;
     void stopListening(); // clears the status; set "generating" after so it wins
-    setStatus("● generating"); // re-renders both views
+    setStatus(""); // re-renders both views
     void sc.send(text);
   }
 
@@ -181,7 +181,7 @@ async function main() {
     webLog = (stripped + `${lastPrompt}${line}`).slice(-WEB_LOG_MAX);
     generating = true;
     void stopListening();
-    setStatus("● generating");
+    setStatus("");
   }
 
   // Reset the conversation and memory: tell `sc` to drop its session memory
