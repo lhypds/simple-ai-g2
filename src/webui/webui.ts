@@ -12,24 +12,29 @@ import "./styles.css";
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { loadSettings, saveSettings } from "../utils/settingUtils";
 import { GEAR_SVG, USER_SVG, REFRESH_SVG } from "../assets/icons";
+import { t, setLocale, parseLocale, UI_LANGUAGES } from "../i18n";
 
 // App version, injected at build time from app.json (see vite.config.ts `define`).
 declare const __APP_VERSION__: string;
 
-// Speech-to-text language choices. "" means auto-detect.
-const LANGUAGES: Array<{ value: string; label: string }> = [
-  { value: "", label: "Auto-detect" },
-  { value: "en", label: "English" },
-  { value: "ja", label: "日本語" },
-  { value: "zh", label: "中文" },
-];
+function speechLanguages() {
+  return [
+    { value: "", label: t("langAuto") },
+    { value: "en", label: "English" },
+    { value: "ja", label: "日本語" },
+    { value: "zh", label: "中文（简体）" },
+    { value: "zh-TW", label: "中文（繁體）" },
+    { value: "ko", label: "한국어" },
+  ];
+}
 
-// UI themes, applied via the `data-theme` attribute on <html> (see styles.css).
-const THEMES: Array<{ value: string; label: string }> = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "terminal", label: "Terminal" },
-];
+function themes() {
+  return [
+    { value: "light", label: t("themeLight") },
+    { value: "dark", label: t("themeDark") },
+    { value: "terminal", label: t("themeTerminal") },
+  ];
+}
 
 function applyTheme(theme: string): void {
   document.documentElement.dataset.theme = theme || "light";
@@ -40,11 +45,15 @@ interface Dropdown {
   el: HTMLElement;
   /** Selected option value (get/set). Setting it updates the label, no callback. */
   value: string;
+  /** Replace all items and refresh the displayed label (for locale switches). */
+  relabel(items: Array<{ value: string; label: string }>): void;
 }
 
 // A fully app-styled dropdown to replace native <select>, whose option menu the
 // webview renders in system style (unstylable). Button shows the current label;
 // clicking toggles a styled menu. `onChange` fires only on user selection.
+const allDropdownClosers: Array<() => void> = [];
+
 function createDropdown(items: Array<{ value: string; label: string }>, onChange: (value: string) => void): Dropdown {
   const el = document.createElement("div");
   el.className = "select";
@@ -62,40 +71,50 @@ function createDropdown(items: Array<{ value: string; label: string }>, onChange
   el.appendChild(menu);
 
   let current = items[0]?.value ?? "";
-  const optionEls = new Map<string, HTMLLIElement>();
+  let optionEls = new Map<string, HTMLLIElement>();
 
-  const setValue = (v: string) => {
-    const item = items.find((i) => i.value === v) ?? items[0];
+  const buildMenu = (newItems: Array<{ value: string; label: string }>) => {
+    menu.innerHTML = "";
+    optionEls = new Map();
+    for (const item of newItems) {
+      const li = document.createElement("li");
+      li.className = "select__option";
+      li.textContent = item.label;
+      li.addEventListener("click", () => {
+        setValue(item.value, newItems);
+        close();
+        onChange(item.value);
+      });
+      menu.appendChild(li);
+      optionEls.set(item.value, li);
+    }
+  };
+
+  const setValue = (v: string, src: Array<{ value: string; label: string }> = []) => {
+    const pool = src.length ? src : [...optionEls.keys()].map((k) => ({ value: k, label: optionEls.get(k)!.textContent ?? "" }));
+    const item = pool.find((i) => i.value === v) ?? pool[0];
     current = item?.value ?? "";
     labelEl.textContent = item?.label ?? "";
     for (const [val, li] of optionEls) li.classList.toggle("select__option--active", val === current);
   };
 
   const close = () => el.classList.remove("select--open");
+  allDropdownClosers.push(close);
 
-  for (const item of items) {
-    const li = document.createElement("li");
-    li.className = "select__option";
-    li.textContent = item.label;
-    li.addEventListener("click", () => {
-      setValue(item.value);
-      close();
-      onChange(item.value);
-    });
-    menu.appendChild(li);
-    optionEls.set(item.value, li);
-  }
+  buildMenu(items);
 
   button.addEventListener("click", (e) => {
     e.stopPropagation(); // don't let the document handler immediately close it
-    el.classList.toggle("select--open");
+    const isOpen = el.classList.contains("select--open");
+    allDropdownClosers.forEach((c) => c());
+    if (!isOpen) el.classList.add("select--open");
   });
   // Close when clicking/tapping anywhere outside this control.
   document.addEventListener("click", (e) => {
     if (!el.contains(e.target as Node)) close();
   });
 
-  setValue(current);
+  setValue(current, items);
 
   return {
     el,
@@ -104,6 +123,10 @@ function createDropdown(items: Array<{ value: string; label: string }>, onChange
     },
     set value(v: string) {
       setValue(v);
+    },
+    relabel(newItems) {
+      buildMenu(newItems);
+      setValue(current, newItems);
     },
   };
 }
@@ -117,7 +140,7 @@ export interface WebUI {
   /** Enable or disable cursor blinking (false = static block). */
   setCursorBlink(blink: boolean): void;
   /** Briefly show a transient message (e.g. a glasses tap arrived). */
-  toast(text: string): void;
+  toast(text: string, durationMs?: number): void;
 }
 
 export interface WebUIOptions {
@@ -141,17 +164,21 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) throw new Error("#app element not found");
 
+  // Load settings and apply locale before building the HTML so t() is ready.
+  let settings = await loadSettings(bridge);
+  setLocale(parseLocale(settings.uiLanguage));
+
   root.innerHTML = `
     <div class="app">
       <header class="app__header">
         <div class="app__title">
-          Simple AI
+          ${t("appTitle")}
           <span class="app__status" data-status></span>
         </div>
         <div class="app__actions">
-          <button class="icon-btn" data-refresh aria-label="Reset conversation">${REFRESH_SVG}</button>
-          <button class="icon-btn" data-open-login aria-label="Login">${USER_SVG}</button>
-          <button class="icon-btn" data-open-settings aria-label="Settings">${GEAR_SVG}</button>
+          <button class="icon-btn" data-refresh>${REFRESH_SVG}</button>
+          <button class="icon-btn" data-open-login>${USER_SVG}</button>
+          <button class="icon-btn" data-open-settings>${GEAR_SVG}</button>
         </div>
       </header>
       <pre class="term" data-term></pre>
@@ -163,53 +190,57 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
     <div class="modal" data-login-modal>
       <div class="modal__box">
-        <h2 class="modal__title">Login</h2>
+        <h2 class="modal__title" data-i18n-login-title>${t("loginTitle")}</h2>
         <label class="field">
-          <span class="field__label">Username</span>
+          <span class="field__label" data-i18n-username>${t("fieldUsername")}</span>
           <input class="field__input" data-username type="text" autocomplete="username" />
         </label>
         <label class="field">
-          <span class="field__label">Password</span>
+          <span class="field__label" data-i18n-password>${t("fieldPassword")}</span>
           <input class="field__input" data-password type="password" autocomplete="current-password" />
         </label>
         <label class="checkbox">
           <input type="checkbox" data-login-save />
-          <span>Save username and password</span>
+          <span data-i18n-save-creds>${t("saveCredentials")}</span>
         </label>
         <div class="modal__actions">
-          <button class="btn" data-close-login>Cancel</button>
-          <button class="btn btn--primary" data-do-login>Login</button>
+          <button class="btn" data-close-login data-i18n-cancel>${t("btnCancel")}</button>
+          <button class="btn btn--primary" data-do-login data-i18n-login-btn>${t("btnLogin")}</button>
         </div>
       </div>
     </div>
 
     <div class="modal" data-settings-modal>
       <div class="modal__box">
-        <h2 class="modal__title">Settings</h2>
+        <h2 class="modal__title" data-i18n-settings-title>${t("settingsTitle")}</h2>
         <label class="field">
-          <span class="field__label">OpenAI API key</span>
+          <span class="field__label" data-i18n-api-key>${t("fieldApiKey")}</span>
           <input class="field__input" data-api-key type="password"
                  placeholder="sk-" autocomplete="off" />
         </label>
         <div class="field">
-          <span class="field__label">Speech language</span>
+          <span class="field__label" data-i18n-speech-lang>${t("fieldSpeechLang")}</span>
           <div data-language></div>
         </div>
         <div class="field">
-          <span class="field__label">Theme</span>
+          <span class="field__label" data-i18n-ui-lang>${t("fieldUiLang")}</span>
+          <div data-ui-language></div>
+        </div>
+        <div class="field">
+          <span class="field__label" data-i18n-theme>${t("fieldTheme")}</span>
           <div data-theme></div>
         </div>
         <label class="switch">
-          <span>Cursor blink</span>
+          <span data-i18n-cursor-blink>${t("toggleCursorBlink")}</span>
           <input type="checkbox" data-cursor-blink />
           <span class="switch__track"><span class="switch__thumb"></span></span>
         </label>
         <div class="modal__actions">
-          <span class="modal__saved" data-saved>Saved ✓</span>
-          <button class="btn" data-close-settings>Cancel</button>
-          <button class="btn btn--primary" data-save>Save</button>
+          <span class="modal__saved" data-saved data-i18n-saved>${t("savedNote")}</span>
+          <button class="btn" data-close-settings data-i18n-cancel-settings>${t("btnCancel")}</button>
+          <button class="btn btn--primary" data-save data-i18n-save>${t("btnSave")}</button>
         </div>
-        <div class="modal__version">Version ${__APP_VERSION__}</div>
+        <div class="modal__version" data-i18n-version>${t("versionPrefix")} ${__APP_VERSION__}</div>
       </div>
     </div>
   `;
@@ -227,16 +258,38 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   const settingsModal = document.querySelector<HTMLDivElement>("[data-settings-modal]")!;
   const apiKeyInput = settingsModal.querySelector<HTMLInputElement>("[data-api-key]")!;
-  const languageSelect = createDropdown(LANGUAGES, () => {});
+  const languageSelect = createDropdown(speechLanguages(), () => {});
+  const uiLanguageSelect = createDropdown(UI_LANGUAGES, () => {});
   // Preview the theme live as the user picks (reverted on Cancel via closeSettings).
-  const themeSelect = createDropdown(THEMES, (value) => applyTheme(value));
+  const themeSelect = createDropdown(themes(), (value) => applyTheme(value));
   settingsModal.querySelector<HTMLDivElement>("[data-language]")!.appendChild(languageSelect.el);
+  settingsModal.querySelector<HTMLDivElement>("[data-ui-language]")!.appendChild(uiLanguageSelect.el);
   settingsModal.querySelector<HTMLDivElement>("[data-theme]")!.appendChild(themeSelect.el);
   const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
   const cursorBlinkCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-cursor-blink]")!;
 
-  // Hold the persisted settings so saving one modal doesn't clobber the other's fields.
-  let settings = await loadSettings(bridge);
+  // Updates all translatable text nodes after a locale switch.
+  const applyTranslations = () => {
+    loginModal.querySelector("[data-i18n-login-title]")!.textContent = t("loginTitle");
+    loginModal.querySelector("[data-i18n-username]")!.textContent = t("fieldUsername");
+    loginModal.querySelector("[data-i18n-password]")!.textContent = t("fieldPassword");
+    loginModal.querySelector("[data-i18n-save-creds]")!.textContent = t("saveCredentials");
+    loginModal.querySelector("[data-i18n-cancel]")!.textContent = t("btnCancel");
+    loginModal.querySelector("[data-i18n-login-btn]")!.textContent = t("btnLogin");
+    settingsModal.querySelector("[data-i18n-settings-title]")!.textContent = t("settingsTitle");
+    settingsModal.querySelector("[data-i18n-api-key]")!.textContent = t("fieldApiKey");
+    settingsModal.querySelector("[data-i18n-speech-lang]")!.textContent = t("fieldSpeechLang");
+    settingsModal.querySelector("[data-i18n-ui-lang]")!.textContent = t("fieldUiLang");
+    settingsModal.querySelector("[data-i18n-theme]")!.textContent = t("fieldTheme");
+    settingsModal.querySelector("[data-i18n-cursor-blink]")!.textContent = t("toggleCursorBlink");
+    settingsModal.querySelector("[data-i18n-saved]")!.textContent = t("savedNote");
+    settingsModal.querySelector("[data-i18n-cancel-settings]")!.textContent = t("btnCancel");
+    settingsModal.querySelector("[data-i18n-save]")!.textContent = t("btnSave");
+    settingsModal.querySelector("[data-i18n-version]")!.textContent = `${t("versionPrefix")} ${__APP_VERSION__}`;
+    languageSelect.relabel(speechLanguages());
+    themeSelect.relabel(themes());
+  };
+
   options.onLanguageChange(settings.language);
   options.onApiKeyChange(settings.apiKey);
   applyTheme(settings.theme);
@@ -325,10 +378,11 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     closeLogin();
   });
 
-  // --- settings modal (language only) -------------------------------------
+  // --- settings modal -----------------------------------------------------
   const openSettings = () => {
     apiKeyInput.value = settings.apiKey;
     languageSelect.value = settings.language;
+    uiLanguageSelect.value = settings.uiLanguage || parseLocale(settings.uiLanguage);
     themeSelect.value = settings.theme;
     cursorBlinkCheckbox.checked = settings.cursorBlink;
     savedNote.classList.remove("modal__saved--show");
@@ -348,15 +402,18 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
   settingsModal.querySelector("[data-save]")!.addEventListener("click", async () => {
     const apiKey = apiKeyInput.value.trim();
     const language = languageSelect.value;
+    const uiLanguage = uiLanguageSelect.value;
     const theme = themeSelect.value;
     const cursorBlink = cursorBlinkCheckbox.checked;
-    settings = { ...settings, apiKey, language, theme, cursorBlink };
+    settings = { ...settings, apiKey, language, uiLanguage, theme, cursorBlink };
     await saveSettings(bridge, settings);
     options.onApiKeyChange(apiKey);
     options.onLanguageChange(language);
     applyTheme(theme);
     termEl.classList.toggle("term--cursor-blink", cursorBlink);
     options.onCursorBlinkChange(cursorBlink);
+    setLocale(parseLocale(uiLanguage));
+    applyTranslations();
     savedNote.classList.add("modal__saved--show");
     setTimeout(closeSettings, 600);
   });
@@ -375,11 +432,11 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
     setCursorBlink(blink: boolean) {
       termEl.classList.toggle("term--cursor-blink", blink);
     },
-    toast(text: string) {
+    toast(text: string, durationMs = 2000) {
       toastEl.textContent = text;
       toastEl.classList.add("toast--show");
       window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toastEl.classList.remove("toast--show"), 2000);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove("toast--show"), durationMs);
     },
   };
 }

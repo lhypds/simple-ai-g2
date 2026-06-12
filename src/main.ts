@@ -5,6 +5,7 @@ import { connectSc } from "./utils/scUtils";
 import { SpeechSegmenter } from "./utils/speechUtils";
 import { hasApiKey, setApiKey, transcribe } from "./utils/transcribeUtils";
 import { trailingPrompt, stripTrailingPrompt } from "./utils/textUtils";
+import { msg } from "./i18n";
 
 // The glasses mic streams single-channel 16 kHz / 16-bit PCM.
 const SAMPLE_RATE = 16000;
@@ -215,7 +216,7 @@ async function main() {
 
   if (!hasApiKey()) {
     setStatus("");
-    emit("Open Settings and paste your OpenAI API key to start voice recognition.\n");
+    ui?.toast(msg("noApiKey"), 5000);
   }
 
   // Each closed segment is sent off for transcription. We tag segments so a slow
