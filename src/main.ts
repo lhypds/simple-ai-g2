@@ -33,7 +33,6 @@ async function main() {
   // While `sc` is producing a reply we stop listening and follow the newest output
   // on the glasses; `listening` gates audio so nothing is captured meanwhile.
   let generating = false;
-  let awaitingReset = false;
   let listening = false;
   let transcriptionEnabled = true;
 
@@ -135,10 +134,9 @@ async function main() {
         terminal = stripTrailingPrompt(terminal);
         renderAll(); // re-render with the waiting prompt pinned at the end
       }
-      // A reply finished (or a reset completed): resume listening for the next utterance.
-      if (generating || awaitingReset) {
+      // A reply finished: resume listening for the next utterance.
+      if (generating) {
         generating = false;
-        awaitingReset = false;
         renderAll(); // show cursor immediately, regardless of whether listening starts
         void startListening();
       }
@@ -188,21 +186,16 @@ async function main() {
   // Reset the conversation and memory: tell `sc` to drop its session memory
   // (`:reset` also clears role/store/node), and wipe our local buffers so both
   // views start clean. The CLI's "Reset." reply and fresh prompt arrive via the
-  // normal output stream. If a generation is in progress, interrupt it first so
-  // `:reset` isn't queued behind a streaming reply.
+  // normal output stream.
   function reset() {
     draft = "";
     terminal = "";
     webLog = "";
     display.followLive();
-    const wasGenerating = generating;
-    generating = false; // stop generating state immediately for visual feedback
-    awaitingReset = true; // onReady will resume listening once :reset completes
-    renderAll();
+    generating = true; // suppress lastPrompt appending until onReady fires
     void stopListening();
     setStatus("");
     emit(":help for help\n");
-    if (wasGenerating) void sc.interrupt();
     void sc.send(":reset");
   }
 
@@ -302,24 +295,26 @@ async function main() {
     await bridge.shutDownPageContainer(0); // 0 = exit immediately (post-confirmation cleanup)
   }
 
-  // Events from the glasses. Audio arrives as audioEvent PCM bytes; ignore it while
-  // generating so the reply isn't interrupted by stray speech.
+  // Events from the glasses. The caption container captures touch-bar scrolls
+  // (isEventCapture), which arrive as SCROLL_TOP/BOTTOM and page through the saved
+  // session transcript: up shows the previous (older) view, down the next (newer) one,
+  // and scrolling past the bottom resumes following the live output. Audio arrives as
+  // audioEvent PCM bytes; ignore it while generating so the reply isn't interrupted by
+  // stray speech.
   bridge.onEvenHubEvent((event) => {
     const eventType = event.textEvent?.eventType ?? event.listEvent?.eventType ?? event.sysEvent?.eventType;
-    // Swipe pagination is disabled while generating; resume once the reply completes.
-    if (!generating) {
-      if (eventType === OsEventTypeList.SCROLL_TOP_EVENT) {
-        void display.showPreviousView();
-        return;
-      }
-      if (eventType === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
-        void display.showNextView();
-        return;
-      }
+    if (eventType === OsEventTypeList.SCROLL_TOP_EVENT) {
+      void display.showPreviousView();
+      return;
+    }
+    if (eventType === OsEventTypeList.SCROLL_BOTTOM_EVENT) {
+      void display.showNextView();
+      return;
     }
     // Single-tap arrives as a sysEvent carrying only an `eventSource` (the touch origin:
     // glasses L/R or ring) with no `eventType` — the host doesn't emit CLICK_EVENT for it.
-    // Cut any in-progress history page view (followLive) and start a fresh conversation.
+    // Treat any such touch-sourced event without a type as a single tap: start a fresh
+    // conversation, and flash a confirmation on the web view.
     const eventSource = event.sysEvent?.eventSource;
     if (eventType == null && eventSource != null && eventSource !== EventSourceType.TOUCH_EVENT_FORM_DUMMY_NULL) {
       reset();
