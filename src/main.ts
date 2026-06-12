@@ -77,9 +77,7 @@ async function main() {
   // for the small glasses display (rendered as-is, no extra cleanup), while `webLog`
   // keeps the full raw scrollback for the web view.
   function emit(text: string) {
-    // The ":help for help" banner hint is noise on the glasses; drop it on the way
-    // in (it's a whole line and never part of a reply).
-    terminal = (terminal + text).replace(/^.*:help.*\n?/gim, "").slice(-TERMINAL_MAX);
+    terminal = (terminal + text).slice(-TERMINAL_MAX);
     webLog = (webLog + text).slice(-WEB_LOG_MAX);
     renderAll();
   }
@@ -130,12 +128,10 @@ async function main() {
       const prompt = trailingPrompt(terminal);
       if (prompt) {
         lastPrompt = prompt;
-        // After a reply (`generating`), keep the exchange and just strip the trailing
-        // prompt. At startup the buffer holds only the CLI banner, so clear it — the
-        // glasses then show a clean "model>" (e.g. "gpt-5.5>") waiting prompt.
-        // Use stripTrailingPrompt (same as webLog) so the trailing newline is preserved,
-        // keeping any blank line the CLI outputs before the prompt.
-        terminal = generating ? stripTrailingPrompt(terminal) : "";
+        // Strip the trailing prompt from the buffer (stored separately in lastPrompt).
+        // Preserving the rest (e.g. ":help for help" banner at startup) so glasses
+        // shows the same content as the web UI.
+        terminal = stripTrailingPrompt(terminal);
         renderAll(); // re-render with the waiting prompt pinned at the end
       }
       // A reply finished: resume listening for the next utterance.
@@ -179,7 +175,7 @@ async function main() {
     const masked = "*".repeat(password.length);
     const line = `:login ${username} ${masked}\n`;
     display.followLive();
-    terminal = `${lastPrompt}${line}`;
+    terminal = (terminal + `${lastPrompt}${line}`).slice(-TERMINAL_MAX);
     const stripped = stripTrailingPrompt(webLog);
     webLog = (stripped + `${lastPrompt}${line}`).slice(-WEB_LOG_MAX);
     generating = true;
