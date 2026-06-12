@@ -20,6 +20,7 @@ export interface ScHandlers {
 export interface ScClient {
   login(username: string, password: string): Promise<void>;
   send(text: string): Promise<void>;
+  interrupt(): Promise<void>;
 }
 
 function randomId(): string {
@@ -59,5 +60,6 @@ export function connectSc(handlers: ScHandlers): ScClient {
   return {
     login: (username, password) => post("/api/sc/login", { username, password }),
     send: (text) => post("/api/sc/send", { text }),
+    interrupt: () => post("/api/sc/interrupt", {}),
   };
 }

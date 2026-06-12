@@ -122,6 +122,10 @@ function writeLine(session, line) {
   if (session.child) session.child.stdin.write(line.endsWith("\n") ? line : line + "\n");
 }
 
+function writeInterrupt(session) {
+  if (session.child) session.child.stdin.write("\x03");
+}
+
 function destroySession(id) {
   const s = sessions.get(id);
   if (!s) return;
@@ -198,6 +202,15 @@ const server = createServer(async (req, res) => {
       const s = ensureChild(session);
       const line = String(text ?? "").trim();
       if (line) writeLine(s, line);
+    }
+    return void res.writeHead(200, { "Content-Type": "application/json" }).end(`{"ok":true}`);
+  }
+
+  if (path === "/api/sc/interrupt" && req.method === "POST") {
+    const { session } = await readJson(req);
+    if (session) {
+      const s = sessions.get(session);
+      if (s) writeInterrupt(s);
     }
     return void res.writeHead(200, { "Content-Type": "application/json" }).end(`{"ok":true}`);
   }
