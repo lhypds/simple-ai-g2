@@ -38,7 +38,7 @@ const en: Translations = {
   fieldApiKey: "OpenAI API key",
   fieldSpeechLang: "Speech language",
   fieldTheme: "Theme",
-  toggleCursorBlink: "Cursor blink",
+  toggleCursorBlink: "Blink cursor",
   toggleTranscription: "Voice transcription",
   btnSave: "Save",
   savedNote: "Saved ✓",
@@ -48,7 +48,7 @@ const en: Translations = {
   themeDark: "Dark",
   themeTerminal: "Terminal",
   message: {
-    noApiKey: "Open Settings and paste your OpenAI API key to start voice recognition.",
+    noApiKey: "Open Settings and set OpenAI API key to start voice recognition.",
   },
 };
 
@@ -74,7 +74,7 @@ const ja: Translations = {
   themeDark: "ダーク",
   themeTerminal: "ターミナル",
   message: {
-    noApiKey: "設定を開いてOpenAI APIキーを入力すると音声認識が開始されます。",
+    noApiKey: "設定を開いてOpenAI APIキーを設定すると音声認識が開始されます。",
   },
 };
 
@@ -100,7 +100,7 @@ const zh: Translations = {
   themeDark: "深色",
   themeTerminal: "终端",
   message: {
-    noApiKey: "请打开设置并粘贴您的 OpenAI API 密钥以开始语音识别。",
+    noApiKey: "请打开设置并设置您的 OpenAI API 密钥以开始语音识别。",
   },
 };
 
@@ -126,7 +126,7 @@ const zt: Translations = {
   themeDark: "深色",
   themeTerminal: "終端機",
   message: {
-    noApiKey: "請開啟設定並貼上您的 OpenAI API 金鑰以開始語音辨識。",
+    noApiKey: "請開啟設定並設定您的 OpenAI API 金鑰以開始語音辨識。",
   },
 };
 
@@ -152,7 +152,7 @@ const ko: Translations = {
   themeDark: "다크",
   themeTerminal: "터미널",
   message: {
-    noApiKey: "설정을 열고 OpenAI API 키를 붙여넣으면 음성 인식이 시작됩니다.",
+    noApiKey: "설정을 열고 OpenAI API 키를 설정하면 음성 인식이 시작됩니다。",
   },
 };
 

@@ -58,9 +58,9 @@ async function main() {
     // is idle, so re-add it here — this also shows the model name before the first
     // exchange, when `terminal` is still empty.
     let glassesView: string;
-    if (preview) glassesView = terminal ? `${terminal}\n${lastPrompt}${draft}` : `${lastPrompt}${draft}`;
+    if (preview) glassesView = terminal ? `${terminal}${lastPrompt}${draft}` : `${lastPrompt}${draft}`;
     else if (generating) glassesView = terminal;
-    else glassesView = terminal ? `${terminal}\n${lastPrompt}` : lastPrompt;
+    else glassesView = terminal ? `${terminal}${lastPrompt}` : lastPrompt;
     const cursorOn = !generating;
     ui?.setCursor(cursorOn);
     display.setCursor(cursorOn);
@@ -132,7 +132,9 @@ async function main() {
         // After a reply (`generating`), keep the exchange and just strip the trailing
         // prompt. At startup the buffer holds only the CLI banner, so clear it — the
         // glasses then show a clean "model>" (e.g. "gpt-5.5>") waiting prompt.
-        terminal = generating ? terminal.replace(/\n*[^\n]*?>[ \t]*$/, "") : "";
+        // Use stripTrailingPrompt (same as webLog) so the trailing newline is preserved,
+        // keeping any blank line the CLI outputs before the prompt.
+        terminal = generating ? stripTrailingPrompt(terminal) : "";
         renderAll(); // re-render with the waiting prompt pinned at the end
       }
       // A reply finished: resume listening for the next utterance.
@@ -152,13 +154,12 @@ async function main() {
     onUnavailable: () => emit("\n[sc bridge unavailable — run `npm run dev`]\n"),
   });
 
-  // Start a new conversation: clear the screen so only this exchange is shown, keep
-  // the CLI prompt, and echo the input after it. Then send to `sc` and switch to
-  // "generating" (stops listening) until the reply completes.
+  // Send user input: echo it after the prompt and continue the view, then send to
+  // `sc` and switch to "generating" (stops listening) until the reply completes.
   function ask(text: string) {
     draft = ""; // the line is committed now; stop previewing it
     display.followLive(); // a new exchange pulls the glasses back to the live view
-    terminal = `${lastPrompt}${text}\n`;
+    terminal = (terminal + `${lastPrompt}${text}\n`).slice(-TERMINAL_MAX);
     // Echo the input after the model prompt. The previous reply usually leaves the
     // prompt at the tail of the log, but not always (e.g. the very first input), so
     // strip any trailing prompt and re-add `lastPrompt` explicitly — this keeps the
