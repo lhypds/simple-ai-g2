@@ -10,9 +10,7 @@ const ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
 
 const MODEL = "whisper-1";
 
-// Default ISO-639-1 hint (e.g. "en", "ja", "zh"). Used when the caller doesn't pass
-// one. Leave unset for auto-detect.
-const DEFAULT_LANGUAGE = `en`;
+// No default language — omitting the hint lets Whisper auto-detect the language.
 
 // Whisper hallucinates canned phrases on near-silent / non-speech audio (it was
 // trained on subtitled web video). We reject a segment when the model itself is
@@ -38,7 +36,7 @@ export function hasApiKey(): boolean {
 export async function transcribe(pcm: Uint8Array, sampleRate: number, language?: string): Promise<string> {
   if (!apiKey) throw new Error("OpenAI API key is not set");
 
-  const lang = language || DEFAULT_LANGUAGE;
+  const lang = language || "";
   const form = new FormData();
   form.append("file", pcm16ToWav(pcm, sampleRate), "speech.wav");
   form.append("model", MODEL);
