@@ -101,6 +101,7 @@ async function main() {
       return;
     }
     const ok = await bridge.audioControl(true);
+    if (!transcriptionEnabled) return; // disabled while waiting for audioControl
     listening = ok;
     setStatus(ok ? "● listening" : "⚠ mic failed");
   }
