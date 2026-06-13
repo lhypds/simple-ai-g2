@@ -18,7 +18,8 @@ import {
   TextContainerUpgrade,
   type EvenAppBridge,
 } from "@evenrealities/even_hub_sdk";
-import { tailRows, buildPages } from "../utils/textUtils";
+import { tailRows } from "../utils/textUtils";
+import { buildPages } from "../utils/paginationUtils";
 
 const CONTAINER_ID = 1;
 const CONTAINER_NAME = "caption"; // max 16 chars
