@@ -1,7 +1,7 @@
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
 import type { Settings } from "../utils/settingUtils";
 import { saveSettings } from "../utils/settingUtils";
-import { t } from "../i18n";
+import { t, setLocale, localeFromLangCode, getLanguages } from "../i18n";
 
 declare const __APP_VERSION__: string;
 
@@ -217,6 +217,10 @@ export function settingsModalHTML(): string {
     <div class="modal" data-settings-modal>
       <div class="modal__box">
         <h2 class="modal__title" data-i18n-settings-title>${t("settingsTitle")}</h2>
+        <div class="field">
+          <span class="field__label" data-i18n-ui-language>${t("fieldLanguage")}</span>
+          <div data-ui-locale></div>
+        </div>
         <label class="field">
           <span class="field__label" data-i18n-api-key>${t("fieldApiKey")}</span>
           <input class="field__input" data-api-key type="password"
@@ -257,6 +261,7 @@ export interface SettingsModalCallbacks {
   onCursorBlinkChange: (blink: boolean) => void;
   onTranscriptionChange: (enabled: boolean) => void;
   onApplyTranslations: () => void;
+  onSendCommand: (command: string) => void;
 }
 
 export function createSettingsModal(
@@ -268,10 +273,12 @@ export function createSettingsModal(
 ) {
   const settingsModal = root.querySelector<HTMLDivElement>("[data-settings-modal]")!;
   const apiKeyInput = settingsModal.querySelector<HTMLInputElement>("[data-api-key]")!;
-  const languageSelect = createDropdown(speechLanguages(), () => {}, { searchable: true });
+  const languageSelect = createDropdown(getLanguages(), () => {}, { searchable: true });
+  const speechLanguageSelect = createDropdown(speechLanguages(), () => {}, { searchable: true });
   // Preview the theme live as the user picks (reverted on Cancel via closeSettings).
   const themeSelect = createDropdown(themes(), (value) => applyTheme(value));
-  settingsModal.querySelector<HTMLDivElement>("[data-language]")!.appendChild(languageSelect.el);
+  settingsModal.querySelector<HTMLDivElement>("[data-ui-locale]")!.appendChild(languageSelect.el);
+  settingsModal.querySelector<HTMLDivElement>("[data-language]")!.appendChild(speechLanguageSelect.el);
   settingsModal.querySelector<HTMLDivElement>("[data-theme]")!.appendChild(themeSelect.el);
   const savedNote = settingsModal.querySelector<HTMLSpanElement>("[data-saved]")!;
   const cursorBlinkCheckbox = settingsModal.querySelector<HTMLInputElement>("[data-cursor-blink]")!;
@@ -287,6 +294,7 @@ export function createSettingsModal(
   const open = () => {
     apiKeyInput.value = settingsRef.current.apiKey;
     languageSelect.value = settingsRef.current.language;
+    speechLanguageSelect.value = settingsRef.current.speechLanguage;
     themeSelect.value = settingsRef.current.theme;
     cursorBlinkCheckbox.checked = settingsRef.current.cursorBlink;
     transcriptionCheckbox.checked = settingsRef.current.transcription;
@@ -313,13 +321,17 @@ export function createSettingsModal(
   settingsModal.querySelector("[data-save]")!.addEventListener("click", async () => {
     const apiKey = apiKeyInput.value.trim();
     const language = languageSelect.value;
+    const speechLanguage = speechLanguageSelect.value;
     const theme = themeSelect.value;
     const cursorBlink = cursorBlinkCheckbox.checked;
     const transcription = transcriptionCheckbox.checked;
-    settingsRef.current = { ...settingsRef.current, apiKey, language, theme, cursorBlink, transcription };
+    settingsRef.current = { ...settingsRef.current, apiKey, language, speechLanguage, theme, cursorBlink, transcription };
     await saveSettings(bridge, settingsRef.current);
     callbacks.onApiKeyChange(apiKey);
-    callbacks.onLanguageChange(language);
+    setLocale(localeFromLangCode(language));
+    // Notify the server of the selected language
+    if (language) callbacks.onSendCommand(`:lang use ${language}`);
+    callbacks.onLanguageChange(speechLanguage);
     applyTheme(theme);
     termEl.classList.toggle("term--cursor-blink", cursorBlink);
     callbacks.onCursorBlinkChange(cursorBlink);
@@ -335,6 +347,7 @@ export function createSettingsModal(
     setApiKeyDependentState,
     applyTranslations() {
       settingsModal.querySelector("[data-i18n-settings-title]")!.textContent = t("settingsTitle");
+      settingsModal.querySelector("[data-i18n-ui-language]")!.textContent = t("fieldLanguage");
       settingsModal.querySelector("[data-i18n-api-key]")!.textContent = t("fieldApiKey");
       settingsModal.querySelector("[data-i18n-speech-lang]")!.textContent = t("fieldSpeechLang");
       settingsModal.querySelector("[data-i18n-theme]")!.textContent = t("fieldTheme");
@@ -344,7 +357,8 @@ export function createSettingsModal(
       settingsModal.querySelector("[data-i18n-cancel-settings]")!.textContent = t("btnCancel");
       settingsModal.querySelector("[data-i18n-save]")!.textContent = t("btnSave");
       settingsModal.querySelector("[data-i18n-version]")!.textContent = `${t("versionPrefix")} ${__APP_VERSION__}`;
-      languageSelect.relabel(speechLanguages());
+      languageSelect.relabel(getLanguages());
+      speechLanguageSelect.relabel(speechLanguages());
       themeSelect.relabel(themes());
     },
   };

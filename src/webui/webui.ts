@@ -12,7 +12,7 @@ import "./styles.css";
 import type { EvenAppBridge } from "@evenrealities/even_hub_sdk";
 import { loadSettings } from "../utils/settingUtils";
 import { GEAR_SVG, USER_SVG, REFRESH_SVG } from "../assets/icons";
-import { t, setLocale, parseLocale } from "../i18n";
+import { t, setLocale, localeFromLangCode } from "../i18n";
 import { userModalHTML, createUserModal } from "./user";
 import { settingsModalHTML, createSettingsModal, applyTheme } from "./settings";
 
@@ -55,7 +55,7 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
 
   // Load settings and apply locale before building the HTML so t() is ready.
   const settingsRef = { current: await loadSettings(bridge) };
-  setLocale(parseLocale(""));
+  setLocale(localeFromLangCode(settingsRef.current.language));
 
   root.innerHTML = `
     <div class="app">
@@ -101,9 +101,11 @@ export async function createWebUI(bridge: EvenAppBridge, options: WebUIOptions):
       userModal.applyTranslations();
       settingsModal.applyTranslations();
     },
+    onSendCommand: options.onSubmit,
   });
 
-  options.onLanguageChange(settingsRef.current.language);
+  options.onLanguageChange(settingsRef.current.speechLanguage);
+  if (settingsRef.current.language) options.onSubmit(`:lang use ${settingsRef.current.language}`);
   options.onApiKeyChange(settingsRef.current.apiKey);
   applyTheme(settingsRef.current.theme);
   termEl.classList.toggle("term--cursor-blink", settingsRef.current.cursorBlink);

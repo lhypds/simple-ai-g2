@@ -30,11 +30,46 @@ export function msg(key: keyof Translations["message"]): string {
   return current.message[key];
 }
 
-export const UI_LANGUAGES: Array<{ value: string; label: string }> = [
-  { value: "", label: "Auto (system)" },
-  { value: "en", label: "English" },
-  { value: "ja", label: "日本語" },
-  { value: "zh", label: "中文（简体）" },
-  { value: "zt", label: "中文（繁體）" },
-  { value: "ko", label: "한국어" },
-];
+export function getLanguages(): Array<{ value: string; label: string }> {
+  return [
+    { value: "", label: "Auto (system)" },
+    { value: "ar-EG", label: "العربية (مصر)" },
+    { value: "ar-IQ", label: "العربية (العراق)" },
+    { value: "ar-MA", label: "العربية (المغرب)" },
+    { value: "ar-SA", label: "العربية (السعودية)" },
+    { value: "ar-SY", label: "العربية (سوريا)" },
+    { value: "bn-BD", label: "বাংলা" },
+    { value: "de-DE", label: "Deutsch" },
+    { value: "en-US", label: "English (US)" },
+    { value: "en-GB", label: "English (UK)" },
+    { value: "es-ES", label: "Español" },
+    { value: "fr-CA", label: "Français (Canada)" },
+    { value: "fr-FR", label: "Français (France)" },
+    { value: "hi-IN", label: "हिन्दी" },
+    { value: "id-ID", label: "Bahasa Indonesia" },
+    { value: "it-IT", label: "Italiano" },
+    { value: "ja-JP", label: "日本語" },
+    { value: "ko-KR", label: "한국어" },
+    { value: "nl-BE", label: "Nederlands (België)" },
+    { value: "nl-NL", label: "Nederlands" },
+    { value: "pl-PL", label: "Polski" },
+    { value: "pt-BR", label: "Português (Brasil)" },
+    { value: "pt-PT", label: "Português (Portugal)" },
+    { value: "ru-RU", label: "Русский" },
+    { value: "sv-FI", label: "Svenska (Finland)" },
+    { value: "sv-SE", label: "Svenska (Sverige)" },
+    { value: "tr-TR", label: "Türkçe" },
+    { value: "zh-CN", label: "中文(简体)" },
+    { value: "zh-HK", label: "中文(香港)" },
+    { value: "zh-TW", label: "中文(繁體)" },
+  ];
+}
+
+export function localeFromLangCode(code: string): Locale {
+  if (!code) return detectLocale();
+  const lower = code.toLowerCase();
+  if (lower.startsWith("zh-tw") || lower.startsWith("zh-hant") || lower.startsWith("zh-hk")) return "zt";
+  if (lower.startsWith("zh")) return "zh";
+  const base = lower.split("-")[0];
+  return (LOCALES.find((l) => l === base) as Locale | undefined) ?? "en";
+}

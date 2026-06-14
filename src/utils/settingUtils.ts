@@ -14,6 +14,8 @@ export interface Settings {
   /** OpenAI API key, entered in Settings (kept on-device, not bundled at build time). */
   apiKey: string;
   /** ISO-639-1 speech-to-text hint; "" means auto-detect. */
+  speechLanguage: string;
+  /** BCP 47 language code (e.g. "en-US") for UI and AI; "" means auto-detect. */
   language: string;
   /** UI theme: "light" | "dark" | "terminal". */
   theme: string;
@@ -29,6 +31,7 @@ const EMPTY: Settings = {
   username: "",
   password: "",
   apiKey: "",
+  speechLanguage: "",
   language: "",
   theme: "terminal",
   loginSave: true,
@@ -78,12 +81,13 @@ export async function loadSettings(bridge: EvenAppBridge): Promise<Settings> {
   }
   if (!raw) return { ...EMPTY };
   try {
-    const parsed = JSON.parse(raw) as Partial<Settings>;
+    const parsed = JSON.parse(raw) as Partial<Settings> & { language?: string; uiLocale?: string };
     return {
       username: parsed.username ?? "",
       password: parsed.password ?? "",
       apiKey: parsed.apiKey ?? "",
-      language: parsed.language ?? "",
+      speechLanguage: parsed.speechLanguage ?? parsed.language ?? "",
+      language: parsed.language ?? parsed.uiLocale ?? "",
       theme: parsed.theme ?? "terminal",
       loginSave: parsed.loginSave ?? true,
       cursorBlink: parsed.cursorBlink ?? false,
