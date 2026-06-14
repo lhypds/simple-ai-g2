@@ -205,6 +205,8 @@ body {
 
 .modal--open {
   display: flex;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .modal__box {
@@ -222,6 +224,16 @@ body {
 .modal__title {
   margin: 0;
   font-size: 15px;
+}
+
+.modal__view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal__view .modal__actions {
+  margin-top: 6px;
 }
 
 .field {
@@ -512,6 +524,17 @@ body {
   border-color: var(--btn);
   color: var(--btn-text);
   font-weight: 600;
+}
+
+.btn-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  margin-right: auto;
 }
 
 .modal__saved {

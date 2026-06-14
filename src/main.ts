@@ -197,6 +197,18 @@ async function main() {
     setStatus("");
   }
 
+  function echoRegister(username: string, email: string, password: string) {
+    const masked = "*".repeat(password.length);
+    const line = `:user add ${username} ${email} ${masked}\n`;
+    display.followLive();
+    terminal = (terminal + `${lastPrompt}${line}`).slice(-TERMINAL_MAX);
+    const stripped = stripTrailingPrompt(webLog);
+    webLog = (stripped + `${lastPrompt}${line}`).slice(-WEB_LOG_MAX);
+    generating = true;
+    void stopListening();
+    setStatus("");
+  }
+
   // Reset the conversation and memory: tell `sc` to drop its session memory
   // (`:reset` also clears role/store/node), and wipe our local buffers so both
   // views start clean. The CLI's "Reset." reply and fresh prompt arrive via the
@@ -238,6 +250,10 @@ async function main() {
       } else {
         pendingLogin = { username, password };
       }
+    },
+    onRegister: (username, email, password) => {
+      echoRegister(username, email, password);
+      void sc.send(`:user add ${username} ${email} ${password}`);
     },
     onLanguageChange: (language) => {
       sttLanguage = language;

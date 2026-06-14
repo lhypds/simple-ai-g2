@@ -3,11 +3,14 @@ export type Locale = "en" | "ja" | "zh" | "zt" | "ko";
 export interface Translations {
   appTitle: string;
   loginTitle: string;
+  registerTitle: string;
   fieldUsername: string;
+  fieldEmail: string;
   fieldPassword: string;
   saveCredentials: string;
   btnCancel: string;
   btnLogin: string;
+  btnRegister: string;
   settingsTitle: string;
   fieldApiKey: string;
   fieldSpeechLang: string;
@@ -29,11 +32,14 @@ export interface Translations {
 const en: Translations = {
   appTitle: "Simple AI",
   loginTitle: "Login",
+  registerTitle: "Register as a user",
   fieldUsername: "Username",
+  fieldEmail: "Email",
   fieldPassword: "Password",
   saveCredentials: "Save credentials",
   btnCancel: "Cancel",
   btnLogin: "Login",
+  btnRegister: "Register",
   settingsTitle: "Settings",
   fieldApiKey: "OpenAI API key (for voice transcription)",
   fieldSpeechLang: "Speech language",
@@ -55,11 +61,14 @@ const en: Translations = {
 const ja: Translations = {
   appTitle: "Simple AI",
   loginTitle: "ログイン",
+  registerTitle: "ユーザー登録",
   fieldUsername: "ユーザー名",
+  fieldEmail: "メールアドレス",
   fieldPassword: "パスワード",
   saveCredentials: "ログイン情報を保存する",
   btnCancel: "キャンセル",
   btnLogin: "ログイン",
+  btnRegister: "登録",
   settingsTitle: "設定",
   fieldApiKey: "OpenAI APIキー（文字起こし用）",
   fieldSpeechLang: "音声言語",
@@ -81,11 +90,14 @@ const ja: Translations = {
 const zh: Translations = {
   appTitle: "Simple AI",
   loginTitle: "登录",
+  registerTitle: "用户注册",
   fieldUsername: "用户名",
+  fieldEmail: "邮箱",
   fieldPassword: "密码",
   saveCredentials: "保存登入信息",
   btnCancel: "取消",
   btnLogin: "登录",
+  btnRegister: "注册",
   settingsTitle: "设置",
   fieldApiKey: "OpenAI API 密钥（用于语音转录）",
   fieldSpeechLang: "语音语言",
@@ -107,11 +119,14 @@ const zh: Translations = {
 const zt: Translations = {
   appTitle: "Simple AI",
   loginTitle: "登入",
+  registerTitle: "使用者註冊",
   fieldUsername: "使用者名稱",
+  fieldEmail: "電子郵件",
   fieldPassword: "密碼",
   saveCredentials: "儲存登入資訊",
   btnCancel: "取消",
   btnLogin: "登入",
+  btnRegister: "註冊",
   settingsTitle: "設定",
   fieldApiKey: "OpenAI API 金鑰（文字轉錄用）",
   fieldSpeechLang: "語音語言",
@@ -133,11 +148,14 @@ const zt: Translations = {
 const ko: Translations = {
   appTitle: "Simple AI",
   loginTitle: "로그인",
+  registerTitle: "사용자 등록",
   fieldUsername: "사용자 이름",
+  fieldEmail: "이메일",
   fieldPassword: "비밀번호",
   saveCredentials: "로그인 정보 저장",
   btnCancel: "취소",
   btnLogin: "로그인",
+  btnRegister: "회원가입",
   settingsTitle: "설정",
   fieldApiKey: "OpenAI API 키 (음성 전사용)",
   fieldSpeechLang: "음성 언어",
