@@ -24,6 +24,7 @@ export interface Translations {
   themeLight: string;
   themeDark: string;
   themeTerminal: string;
+  passwordHint: string;
   message: {
     noApiKey: string;
   };
@@ -53,6 +54,7 @@ const en: Translations = {
   themeLight: "Light",
   themeDark: "Dark",
   themeTerminal: "Terminal",
+  passwordHint: "* At least 8 characters.",
   message: {
     noApiKey: "Open Settings and set OpenAI API key to start voice transcription.",
   },
@@ -82,6 +84,7 @@ const ja: Translations = {
   themeLight: "ライト",
   themeDark: "ダーク",
   themeTerminal: "ターミナル",
+  passwordHint: "* 8文字以上で入力してください。",
   message: {
     noApiKey: "設定を開いてOpenAI APIキーを設定すると音声認識が開始されます。",
   },
@@ -111,6 +114,7 @@ const zh: Translations = {
   themeLight: "浅色",
   themeDark: "深色",
   themeTerminal: "终端",
+  passwordHint: "* 请输入至少 8 个字符。",
   message: {
     noApiKey: "请打开设置并设置您的 OpenAI API 密钥以开始语音识别。",
   },
@@ -140,6 +144,7 @@ const zt: Translations = {
   themeLight: "淺色",
   themeDark: "深色",
   themeTerminal: "終端機",
+  passwordHint: "* 請輸入至少 8 個字元。",
   message: {
     noApiKey: "請開啟設定並設定您的 OpenAI API 金鑰以開始文字轉錄。",
   },
@@ -169,6 +174,7 @@ const ko: Translations = {
   themeLight: "라이트",
   themeDark: "다크",
   themeTerminal: "터미널",
+  passwordHint: "* 8자 이상 입력해 주세요.",
   message: {
     noApiKey: "설정을 열고 OpenAI API 키를 설정하면 음성 전사가 시작됩니다。",
   },

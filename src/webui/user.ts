@@ -41,6 +41,7 @@ export function userModalHTML(): string {
           <label class="field">
             <span class="field__label" data-i18n-reg-password>${t("fieldPassword")}</span>
             <input class="field__input" data-reg-password type="password" autocomplete="new-password" />
+            <span class="field__hint" data-i18n-password-hint>${t("passwordHint")}</span>
           </label>
           <div class="modal__actions">
             <button class="btn" data-show-login data-i18n-cancel>${t("btnCancel")}</button>
@@ -138,6 +139,7 @@ export function createUserModal(
       loginModal.querySelector("[data-i18n-email]")!.textContent = t("fieldEmail");
       loginModal.querySelector("[data-i18n-reg-username]")!.textContent = t("fieldUsername");
       loginModal.querySelector("[data-i18n-reg-password]")!.textContent = t("fieldPassword");
+      loginModal.querySelector("[data-i18n-password-hint]")!.textContent = t("passwordHint");
     },
   };
 }
